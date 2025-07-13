@@ -61,7 +61,7 @@ export default function Home() {
       const startDate = thirtyDaysAgo.toISOString().split('T')[0]
       const endDate = today.toISOString().split('T')[0]
       
-      const salesResponse = await fetch(`http://localhost:3001/reports/date-range?startDate=${startDate}&endDate=${endDate}`)
+      const salesResponse = await fetch(`https://pos-backend-oaym.onrender.com/reports/date-range?startDate=${startDate}&endDate=${endDate}`)
       if (salesResponse.ok) {
         const salesData = await salesResponse.json()
         // Get the most recent 5 sales
