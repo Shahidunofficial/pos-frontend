@@ -49,7 +49,7 @@ export default function Home() {
       setLoading(true)
       
       // Fetch sales overview
-      const overviewResponse = await fetch('http://localhost:3001/reports/overview')
+      const overviewResponse = await fetch('https://pos-backend-oaym.onrender.com/reports/overview')
       if (overviewResponse.ok) {
         const overviewData = await overviewResponse.json()
         setOverview(overviewData)
