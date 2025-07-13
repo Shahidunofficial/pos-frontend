@@ -82,14 +82,14 @@ export default function Home() {
   const stats = overview ? [
     { 
       name: 'Total Sales', 
-      value: `$${overview.totalRevenue.toFixed(2)}`, 
-      change: `${overview.totalSales} transactions`, 
+      value: `LKR${overview.totalRevenue.toFixed(2)}`, 
+      change: `LKR${overview.totalSales} transactions`, 
       changeType: 'positive' as const, 
       icon: CurrencyDollarIcon 
     },
     { 
       name: 'Average Order', 
-      value: `$${overview.averageOrderValue.toFixed(2)}`, 
+      value: `LKR${overview.averageOrderValue.toFixed(2)}`, 
       change: 'Per transaction', 
       changeType: 'positive' as const, 
       icon: ShoppingCartIcon 
@@ -103,16 +103,16 @@ export default function Home() {
     },
     { 
       name: 'Revenue', 
-      value: `$${overview.totalRevenue.toFixed(2)}`, 
+      value: `LKR${overview.totalRevenue.toFixed(2)}`, 
       change: 'All time', 
       changeType: 'positive' as const, 
       icon: ChartBarIcon 
     },
   ] : [
-    { name: 'Total Sales', value: '$0.00', change: 'Loading...', changeType: 'positive' as const, icon: CurrencyDollarIcon },
-    { name: 'Average Order', value: '$0.00', change: 'Loading...', changeType: 'positive' as const, icon: ShoppingCartIcon },
+    { name: 'Total Sales', value: 'LKR0.00', change: 'Loading...', changeType: 'positive' as const, icon: CurrencyDollarIcon },
+    { name: 'Average Order', value: 'LKR0.00', change: 'Loading...', changeType: 'positive' as const, icon: ShoppingCartIcon },
     { name: 'Total Products', value: '0', change: 'Loading...', changeType: 'positive' as const, icon: UserGroupIcon },
-    { name: 'Revenue', value: '$0.00', change: 'Loading...', changeType: 'positive' as const, icon: ChartBarIcon },
+    { name: 'Revenue', value: 'LKR0.00', change: 'Loading...', changeType: 'positive' as const, icon: ChartBarIcon },
   ]
 
   return (
