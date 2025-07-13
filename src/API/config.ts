@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://localhost:3001';
+export const API_BASE_URL = 'https://pos-backend-oaym.onrender.com/';
 
 export async function makeRequest<T>(
   endpoint: string,
