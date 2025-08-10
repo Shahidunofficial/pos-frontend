@@ -1,71 +1,25 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CalendarIcon, ChartBarIcon, CurrencyDollarIcon, ShoppingBagIcon, PrinterIcon } from '@heroicons/react/24/outline'
+import { CalendarIcon, ChartBarIcon, CurrencyDollarIcon, ShoppingBagIcon, PrinterIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
-
-interface SalesOverview {
-  todaysSales: number
-  todaysRevenue: number
-  monthToDateSales: number
-  monthToDateRevenue: number
-  activeOrders: number
-  topSellingProducts: ProductSalesReport[]
-}
-
-interface ProductSalesReport {
-  productId: string
-  productName: string
-  quantitySold: number
-  totalRevenue: number
-  averagePrice: number
-}
-
-interface DailySalesReport {
-  date: string
-  totalSales: number
-  totalRevenue: number
-  averageOrderValue: number
-  transactions: Sale[]
-}
-
-interface MonthlySalesReport {
-  month: string
-  year: number
-  totalSales: number
-  totalRevenue: number
-  averageOrderValue: number
-  dailyBreakdown: DailySalesReport[]
-}
-
-interface Sale {
-  id: string
-  items: Array<{
-    productId: string
-    quantity: number
-    price: number
-  }>
-  total: number
-  createdAt: string
-  customerName?: string
-}
+import { SalesReportApi, SalesOverview, DailySalesReport, MonthlySalesReport, InventoryAnalysis, Sale } from '../../API/SalesReport'
 
 export default function SalesReportPage() {
   const [loading, setLoading] = useState(true)
   const [overview, setOverview] = useState<SalesOverview | null>(null)
   const [dailyReport, setDailyReport] = useState<DailySalesReport | null>(null)
   const [monthlyReport, setMonthlyReport] = useState<MonthlySalesReport | null>(null)
+  const [inventoryAnalysis, setInventoryAnalysis] = useState<InventoryAnalysis | null>(null)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [activeTab, setActiveTab] = useState<'overview' | 'daily' | 'monthly' | 'products'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'daily' | 'monthly' | 'products' | 'inventory'>('overview')
 
   // Fetch sales overview
   const fetchOverview = async () => {
     try {
-      const response = await fetch('http://localhost:3001/reports/overview')
-      if (!response.ok) throw new Error('Failed to fetch overview')
-      const data = await response.json()
+      const data = await SalesReportApi.getSalesOverview()
       setOverview(data)
     } catch (error) {
       toast.error('Failed to fetch sales overview')
@@ -76,9 +30,7 @@ export default function SalesReportPage() {
   // Fetch daily report
   const fetchDailyReport = async (date: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/reports/daily?date=${date}`)
-      if (!response.ok) throw new Error('Failed to fetch daily report')
-      const data = await response.json()
+      const data = await SalesReportApi.getDailySalesReport(date)
       setDailyReport(data)
     } catch (error) {
       toast.error('Failed to fetch daily report')
@@ -89,9 +41,7 @@ export default function SalesReportPage() {
   // Fetch monthly report
   const fetchMonthlyReport = async (month: number, year: number) => {
     try {
-      const response = await fetch(`http://localhost:3001/reports/monthly?month=${month}&year=${year}`)
-      if (!response.ok) throw new Error('Failed to fetch monthly report')
-      const data = await response.json()
+      const data = await SalesReportApi.getMonthlySalesReport(month, year)
       setMonthlyReport(data)
     } catch (error) {
       toast.error('Failed to fetch monthly report')
@@ -99,27 +49,73 @@ export default function SalesReportPage() {
     }
   }
 
+  // Fetch inventory analysis
+  const fetchInventoryAnalysis = async () => {
+    try {
+      const data = await SalesReportApi.getInventoryAnalysis()
+      setInventoryAnalysis(data)
+    } catch (error) {
+      toast.error('Failed to fetch inventory analysis')
+      console.error(error)
+    }
+  }
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
-      await Promise.all([
-        fetchOverview(),
-        fetchDailyReport(selectedDate),
-        fetchMonthlyReport(selectedMonth, selectedYear)
-      ])
-      setLoading(false)
+      try {
+        await Promise.all([
+          fetchOverview(),
+          fetchDailyReport(selectedDate),
+          fetchMonthlyReport(selectedMonth, selectedYear),
+          fetchInventoryAnalysis()
+        ])
+      } catch (error) {
+        console.error('Error loading data:', error)
+        toast.error('Failed to load some data')
+      } finally {
+        setLoading(false)
+      }
     }
     loadData()
   }, [selectedDate, selectedMonth, selectedYear])
 
-  // Print receipt for a sale
-  const printReceipt = async (saleId: string) => {
-    try {
-      const response = await fetch(`http://localhost:3001/sales/${saleId}/receipt/print`)
-      if (!response.ok) throw new Error('Failed to generate receipt')
-      const { receiptText } = await response.json()
+  // Local receipt generation
+  const generateReceiptContent = (sale: Sale) => {
+    const date = new Date(sale.createdAt).toLocaleString()
+    let receiptContent = `
+      ===================================
+                SALES RECEIPT
+      ===================================
+      Date: ${date}
+      Receipt #: ${sale.id}
+      Customer: ${sale.customerName || 'Walk-in Customer'}
+      ===================================
+      Items:
+      ${sale.items.map(item => `
+      ${item.productId}
+      Qty: ${item.quantity} x $${item.price.toFixed(2)}
+      Subtotal: $${(item.quantity * item.price).toFixed(2)}
+      `).join('\n')}
+      ===================================
+      Total Amount: $${sale.total.toFixed(2)}
+      ===================================
       
-      // Create a new window for printing
+      Warranty Terms & Conditions:
+      ${sale.warrantyTerms || 'Standard warranty applies'}
+      
+      Terms & Conditions:
+      ${sale.termsAndConditions || 'Standard terms apply'}
+      
+      Thank you for your business!
+      ===================================
+    `
+    return receiptContent
+  }
+
+  const printReceipt = async (sale: Sale) => {
+    try {
+      const receiptContent = generateReceiptContent(sale)
       const printWindow = window.open('', '_blank')
       if (printWindow) {
         printWindow.document.write(`
@@ -127,22 +123,24 @@ export default function SalesReportPage() {
             <head>
               <title>Receipt</title>
               <style>
-                body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 20px; }
-                pre { margin: 0; white-space: pre-wrap; }
+                body { 
+                  font-family: 'Courier New', monospace; 
+                  font-size: 12px; 
+                  margin: 0; 
+                  padding: 20px;
+                  white-space: pre-wrap;
+                }
               </style>
             </head>
-            <body>
-              <pre>${receiptText}</pre>
-            </body>
+            <body>${receiptContent}</body>
           </html>
         `)
         printWindow.document.close()
         printWindow.print()
       }
-      
-      toast.success('Receipt sent to printer')
+      toast.success('Receipt ready for printing')
     } catch (error) {
-      toast.error('Failed to print receipt')
+      toast.error('Failed to generate receipt')
       console.error(error)
     }
   }
@@ -176,6 +174,7 @@ export default function SalesReportPage() {
             { id: 'daily', name: 'Daily Report', icon: CalendarIcon },
             { id: 'monthly', name: 'Monthly Report', icon: CurrencyDollarIcon },
             { id: 'products', name: 'Product Analytics', icon: ShoppingBagIcon },
+            { id: 'inventory', name: 'Inventory Analysis', icon: ArchiveBoxIcon },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -209,7 +208,9 @@ export default function SalesReportPage() {
                 </div>
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">Today's Revenue</h3>
-                  <p className="text-2xl font-semibold text-gray-900">${overview.todaysRevenue.toFixed(2)}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    ${overview?.todaysRevenue?.toFixed(2) || '0.00'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -221,7 +222,9 @@ export default function SalesReportPage() {
                 </div>
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">Today's Sales</h3>
-                  <p className="text-2xl font-semibold text-gray-900">{overview.todaysSales}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {overview?.todaysSales || 0}
+                  </p>
                 </div>
               </div>
             </div>
@@ -233,7 +236,9 @@ export default function SalesReportPage() {
                 </div>
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">MTD Revenue</h3>
-                  <p className="text-2xl font-semibold text-gray-900">${overview.monthToDateRevenue.toFixed(2)}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    ${overview?.monthToDateRevenue?.toFixed(2) || '0.00'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -245,7 +250,9 @@ export default function SalesReportPage() {
                 </div>
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">MTD Sales</h3>
-                  <p className="text-2xl font-semibold text-gray-900">{overview.monthToDateSales}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {overview?.monthToDateSales || 0}
+                  </p>
                 </div>
               </div>
             </div>
@@ -265,7 +272,7 @@ export default function SalesReportPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {overview.topSellingProducts.map((product) => (
+                  {overview?.topSellingProducts?.map((product) => (
                     <tr key={product.productId}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {product.productName}
@@ -274,13 +281,20 @@ export default function SalesReportPage() {
                         {product.quantitySold}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${product.totalRevenue.toFixed(2)}
+                        ${product.totalRevenue?.toFixed(2) || '0.00'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${product.averagePrice.toFixed(2)}
+                        ${product.averagePrice?.toFixed(2) || '0.00'}
                       </td>
                     </tr>
                   ))}
+                  {(!overview?.topSellingProducts || overview.topSellingProducts.length === 0) && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                        No products data available
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -313,24 +327,30 @@ export default function SalesReportPage() {
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                 <div className="card">
                   <h3 className="text-sm font-medium text-gray-500">Total Sales</h3>
-                  <p className="text-2xl font-semibold text-gray-900">{dailyReport.totalSales}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {dailyReport?.totalSales || 0}
+                  </p>
                 </div>
                 <div className="card">
                   <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
-                  <p className="text-2xl font-semibold text-gray-900">${dailyReport.totalRevenue.toFixed(2)}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    ${dailyReport?.totalRevenue?.toFixed(2) || '0.00'}
+                  </p>
                 </div>
                 <div className="card">
                   <h3 className="text-sm font-medium text-gray-500">Average Order Value</h3>
-                  <p className="text-2xl font-semibold text-gray-900">${dailyReport.averageOrderValue.toFixed(2)}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    ${dailyReport?.averageOrderValue?.toFixed(2) || '0.00'}
+                  </p>
                 </div>
               </div>
 
               {/* Daily Transactions */}
               <div className="card">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Transactions for {dailyReport.date}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Transactions for {dailyReport?.date || 'Today'}</h3>
                 </div>
-                {dailyReport.transactions.length === 0 ? (
+                {(!dailyReport?.transactions || dailyReport.transactions.length === 0) ? (
                   <p className="text-gray-500 text-center py-8">No transactions on this date</p>
                 ) : (
                   <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
@@ -354,14 +374,14 @@ export default function SalesReportPage() {
                               {sale.customerName || 'Walk-in Customer'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              ${sale.total.toFixed(2)}
+                              ${sale.total?.toFixed(2) || '0.00'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {new Date(sale.createdAt).toLocaleTimeString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               <button
-                                onClick={() => printReceipt(sale.id)}
+                                onClick={() => printReceipt(sale)}
                                 className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200"
                               >
                                 <PrinterIcon className="h-4 w-4 mr-1" />
@@ -425,35 +445,44 @@ export default function SalesReportPage() {
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                 <div className="card">
                   <h3 className="text-sm font-medium text-gray-500">Total Sales</h3>
-                  <p className="text-2xl font-semibold text-gray-900">{monthlyReport.totalSales}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {monthlyReport?.totalSales || 0}
+                  </p>
                 </div>
                 <div className="card">
                   <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
-                  <p className="text-2xl font-semibold text-gray-900">${monthlyReport.totalRevenue.toFixed(2)}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    ${monthlyReport?.totalRevenue?.toFixed(2) || '0.00'}
+                  </p>
                 </div>
                 <div className="card">
                   <h3 className="text-sm font-medium text-gray-500">Average Order Value</h3>
-                  <p className="text-2xl font-semibold text-gray-900">${monthlyReport.averageOrderValue.toFixed(2)}</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    ${monthlyReport?.averageOrderValue?.toFixed(2) || '0.00'}
+                  </p>
                 </div>
               </div>
 
               {/* Daily Breakdown Chart */}
               <div className="card">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Daily Sales for {monthlyReport.month} {monthlyReport.year}
+                  Daily Sales for {monthlyReport?.month || 'Current Month'} {monthlyReport?.year || new Date().getFullYear()}
                 </h3>
                 <div className="space-y-2">
-                  {monthlyReport.dailyBreakdown
-                    .filter(day => day.totalSales > 0)
+                  {monthlyReport?.dailyBreakdown
+                    ?.filter(day => day.totalSales > 0)
                     .map((day) => (
                       <div key={day.date} className="flex items-center justify-between py-2 border-b border-gray-200">
                         <span className="text-sm text-gray-900">{day.date}</span>
                         <div className="flex items-center space-x-4">
                           <span className="text-sm text-gray-500">{day.totalSales} sales</span>
-                          <span className="text-sm font-medium text-gray-900">${day.totalRevenue.toFixed(2)}</span>
+                          <span className="text-sm font-medium text-gray-900">${day.totalRevenue?.toFixed(2) || '0.00'}</span>
                         </div>
                       </div>
                     ))}
+                  {(!monthlyReport?.dailyBreakdown || monthlyReport.dailyBreakdown.length === 0) && (
+                    <p className="text-gray-500 text-center py-4">No sales data available for this month</p>
+                  )}
                 </div>
               </div>
             </>
@@ -503,6 +532,85 @@ export default function SalesReportPage() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inventory Analysis Tab */}
+      {activeTab === 'inventory' && inventoryAnalysis && (
+        <div className="mt-8 space-y-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+            <div className="card">
+              <h3 className="text-sm font-medium text-gray-500">Total Invested Amount</h3>
+              <p className="text-2xl font-semibold text-gray-900">
+                ${inventoryAnalysis?.totalInvestedAmount?.toFixed(2) || '0.00'}
+              </p>
+            </div>
+            <div className="card">
+              <h3 className="text-sm font-medium text-gray-500">Expected Profit</h3>
+              <p className="text-2xl font-semibold text-gray-900">
+                ${inventoryAnalysis?.expectedProfit?.toFixed(2) || '0.00'}
+              </p>
+            </div>
+            <div className="card">
+              <h3 className="text-sm font-medium text-gray-500">Current Stock Value</h3>
+              <p className="text-2xl font-semibold text-gray-900">
+                ${inventoryAnalysis?.currentStockValue?.toFixed(2) || '0.00'}
+              </p>
+            </div>
+          </div>
+
+          <div className="card">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Inventory Details</h3>
+            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-300">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Product</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Current Stock</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Purchase Price</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Selling Price</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Promo Price</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Invested Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Expected Profit</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {inventoryAnalysis?.products?.map((product) => (
+                    <tr key={product.productId}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {product.productName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {product.currentStock || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${product.purchasePrice?.toFixed(2) || '0.00'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${product.sellingPrice?.toFixed(2) || '0.00'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${product.promotionalPrice?.toFixed(2) || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${product.investedAmount?.toFixed(2) || '0.00'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${product.expectedProfit?.toFixed(2) || '0.00'}
+                      </td>
+                    </tr>
+                  ))}
+                  {(!inventoryAnalysis?.products || inventoryAnalysis.products.length === 0) && (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                        No inventory data available
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
