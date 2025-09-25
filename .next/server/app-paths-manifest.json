@@ -1,7 +1,9 @@
 {
-  "/not-found": "app/not-found.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/sales/new/page": "app/sales/new/page.js",
   "/page": "app/page.js",
   "/products/page": "app/products/page.js",
-  "/invoices/page": "app/invoices/page.js",
-  "/sales/new/page": "app/sales/new/page.js"
+  "/categories/manage/page": "app/categories/manage/page.js",
+  "/products/new/page": "app/products/new/page.js",
+  "/login/admin/page": "app/login/admin/page.js"
 }

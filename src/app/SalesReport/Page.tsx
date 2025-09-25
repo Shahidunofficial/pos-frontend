@@ -324,7 +324,7 @@ export default function SalesReportPage() {
           {dailyReport && (
             <>
               {/* Daily Stats */}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-4">
                 <div className="card">
                   <h3 className="text-sm font-medium text-gray-500">Total Sales</h3>
                   <p className="text-2xl font-semibold text-gray-900">
@@ -335,6 +335,12 @@ export default function SalesReportPage() {
                   <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
                   <p className="text-2xl font-semibold text-gray-900">
                     ${dailyReport?.totalRevenue?.toFixed(2) || '0.00'}
+                  </p>
+                </div>
+                <div className="card">
+                  <h3 className="text-sm font-medium text-gray-500">Total Profit</h3>
+                  <p className="text-2xl font-semibold text-green-600">
+                    ${dailyReport?.totalProfit?.toFixed(2) || '0.00'}
                   </p>
                 </div>
                 <div className="card">
@@ -360,6 +366,7 @@ export default function SalesReportPage() {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Sale ID</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Customer</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Total</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Profit</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Time</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
                         </tr>
@@ -375,6 +382,9 @@ export default function SalesReportPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               ${sale.total?.toFixed(2) || '0.00'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
+                              ${sale.profit?.toFixed(2) || '0.00'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {new Date(sale.createdAt).toLocaleTimeString()}

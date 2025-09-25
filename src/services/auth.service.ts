@@ -1,3 +1,4 @@
+"use client";
 import { userAPI, LoginRequest, StoreSignupRequest, CreateCashierRequest, ChangePasswordRequest } from '../API/userAPI';
 import { User, LoginCredentials, StoreSignupData, CreateCashierData, ChangePasswordData } from '../types/auth.types';
 

@@ -28,6 +28,7 @@ export interface Product {
     storage?: string[];
   };
   variants: ProductVariant[];
+  userId: string;
   createdAt?: string;
   updatedAt?: string;
 }

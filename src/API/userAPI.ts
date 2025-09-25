@@ -1,3 +1,5 @@
+"use client";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export interface LoginRequest {
@@ -73,15 +75,19 @@ class UserAPI {
 
   // Login
   async login(data: LoginRequest): Promise<AuthResponse> {
+    console.log('🔐 Sending login request:', data);
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     
+    console.log('📥 Login response status:', response.status, response.statusText);
+    
     const result = await this.handleResponse<AuthResponse>(response);
     if (result.access_token) {
       localStorage.setItem('auth_token', result.access_token);
+      console.log('✅ Token stored successfully');
     }
     return result;
   }

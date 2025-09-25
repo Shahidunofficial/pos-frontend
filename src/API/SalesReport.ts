@@ -21,6 +21,7 @@ export interface DailySalesReport {
   date: string;
   totalSales: number;
   totalRevenue: number;
+  totalProfit: number;
   averageOrderValue: number;
   transactions: Sale[];
 }
@@ -42,6 +43,7 @@ export interface Sale {
     price: number;
   }>;
   total: number;
+  profit: number;
   createdAt: string;
   customerName?: string;
   warrantyTerms?: string;

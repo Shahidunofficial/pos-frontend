@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from 'react';
 import { AuthContext } from './AuthContext';
 import { authService } from '../../services/auth.service';
@@ -17,7 +18,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkAuth = async () => {
     try {
+      console.log('🔐 Checking authentication...');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      console.log('🔑 Token status:', !!token, token ? `${token.substring(0, 20)}...` : 'null');
+      
       const user = await authService.getCurrentUser();
+      console.log('✅ User authenticated:', user);
       setState(prev => ({
         ...prev,
         user,
@@ -25,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading: false,
       }));
     } catch (error) {
+      console.log('❌ Authentication check failed:', error);
       setState(prev => ({
         ...prev,
         user: null,
@@ -37,7 +44,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (credentials: LoginCredentials) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      const user = await authService.login(credentials);
+      console.log(' Attempting login for:', credentials.role, credentials.email || credentials.username);
+      const user = await authService.login(credentials);      
+      console.log('✅ Login successful, user:', user);
+      
+      // Verify token was stored
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      console.log('🔑 Token stored after login:', !!token, token ? `${token.substring(0, 20)}...` : 'null');
+      
       setState(prev => ({
         ...prev,
         user,
@@ -46,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error: null,
       }));
     } catch (error) {
+      console.log('❌ Login failed:', error);
       setState(prev => ({
         ...prev,
         user: null,

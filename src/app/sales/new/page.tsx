@@ -31,6 +31,7 @@ export default function NewSalePage() {
   const [products, setProducts] = useState<Product[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [cashAmount, setCashAmount] = useState<number>(0)
 
   const {
     register,
@@ -93,7 +94,12 @@ export default function NewSalePage() {
             : item
         )
       }
-      return [...prev, { productId, name: product.name, price: defaultVariant.sellingPrice, quantity: 1 }]
+      return [...prev, { 
+        productId, 
+        name: product.name || '',
+        price: defaultVariant.sellingPrice, 
+        quantity: 1 
+      }]
     })
     toast.success(`${product.name} added to cart`)
   }
@@ -136,9 +142,14 @@ export default function NewSalePage() {
       const saleData = {
         items: cart.map(item => ({
           productId: item.productId,
-          quantity: item.quantity
+          quantity: item.quantity,
+          name: item.name,
+          price: item.price
         })),
         customerName: data.customerName || undefined,
+        cashAmount: cashAmount,
+        total: calculateTotal(),
+        balance: cashAmount - calculateTotal()
       }
 
       const sale = await apiService.createSale(saleData)
@@ -164,72 +175,339 @@ export default function NewSalePage() {
     }
   }
 
+  // Create a custom receipt with full product names
+  const createCustomReceipt = (receiptText: string) => {
+    const lines = receiptText.split('\n');
+    const customLines = [];
+    let inProductSection = false;
+    let productProcessed = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Detect start of product section (after customer info)
+      if (line.includes('Cust:') || line.includes('Customer:')) {
+        inProductSection = true;
+        customLines.push(line);
+        continue;
+      }
+      
+      // Detect end of product section (subtotal line)
+      if (line.includes('Subtotal:')) {
+        // Add our custom product lines before subtotal if we haven't already
+        if (!productProcessed) {
+          cart.forEach(item => {
+            // Add full product name
+            customLines.push(item.name);
+            // Add quantity and pricing with better spacing for 80mm width
+            const qty = `${item.quantity}x`;
+            const unitPrice = item.price.toFixed(2);
+            const total = (item.quantity * item.price).toFixed(2);
+            // Use wider spacing for 80mm receipt
+            const spacedLine = `  ${qty.padEnd(8)}${unitPrice.padStart(8)}${total.padStart(12)}`;
+            customLines.push(spacedLine);
+          });
+          customLines.push('----------------------------------');
+          
+          // Add cash amount and balance
+          const total = calculateTotal().toFixed(2);
+          const cash = cashAmount.toFixed(2);
+          const balance = (cashAmount - calculateTotal()).toFixed(2);
+          
+          customLines.push(`Total:${total.padStart(28)}`);
+          customLines.push(`Cash:${cash.padStart(29)}`);
+          customLines.push(`Balance:${balance.padStart(26)}`);
+          customLines.push('----------------------------------');
+          productProcessed = true;
+        }
+        
+        inProductSection = false;
+        customLines.push(line);
+        continue;
+      }
+      
+      // Skip original product lines if we're in product section
+      if (inProductSection && (
+        line.match(/^\s*\d+x\s+\d+\.\d+\s+\d+\.\d+$/) || // Quantity line
+        line.match(/^.+\.\.\.\s*$/) || // Truncated product name
+        line.match(/^.+\s+\d+x\s+\d+\.\d+\s+\d+\.\d+$/) || // Full product line
+        line.includes('---') // Separator lines in product section
+      )) {
+        continue;
+      }
+      
+      // Add all other lines
+      customLines.push(line);
+    }
+    
+    return customLines.join('\n');
+  };
+
   // Print receipt function
   const printReceipt = async (saleId: string) => {
     try {
       const { receiptText } = await apiService.getPrintReceipt(saleId)
       
-      // For 80mm thermal printer, we can use the Web API or create a print-friendly format
-      const printWindow = window.open('', '_blank', 'width=300,height=600')
-      if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Receipt - Sale #${saleId}</title>
-              <style>
-                @page {
-                  size: 80mm auto;
-                  margin: 0;
-                }
-                body { 
-                  font-family: 'Courier New', monospace; 
-                  font-size: 12px; 
-                  margin: 0; 
-                  padding: 10px;
-                  width: 80mm;
-                  line-height: 1.2;
-                }
-                pre { 
-                  margin: 0; 
-                  white-space: pre-wrap; 
-                  font-size: 10px;
-                }
-                .receipt-container {
-                  width: 100%;
-                  max-width: 80mm;
-                }
-                @media print {
-                  body { padding: 0; }
-                  .no-print { display: none; }
-                }
-              </style>
-            </head>
-            <body>
-              <div class="receipt-container">
-                <div class="no-print" style="text-align: center; margin-bottom: 10px;">
-                  <button onclick="window.print()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Print Receipt</button>
-                  <button onclick="window.close()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 8px;">Close</button>
-                </div>
-                <pre>${receiptText}</pre>
-              </div>
-              <script>
-                // Auto-print for thermal printers
-                window.onload = function() {
-                  setTimeout(function() {
-                    window.print();
-                  }, 500);
-                }
-              </script>
-            </body>
-          </html>
-        `)
-        printWindow.document.close()
-      }
+      // Debug: Log the original receipt text
+      console.log('Original receipt text:', receiptText);
+      console.log('Cart items:', cart);
       
-      toast.success('Receipt generated for 80mm printer')
+      const formattedReceiptText = createCustomReceipt(receiptText)
+      
+      // Debug: Log the formatted receipt text
+      console.log('Formatted receipt text:', formattedReceiptText);
+
+      // Calculate dynamic height based on content
+      const lineHeight = 17; // Font size in px
+      const padding = 2; // 1mm padding top and bottom
+      const lines = formattedReceiptText.split('\n').length;
+      const contentHeight = (lines * lineHeight * 1.2) + (padding * 2); // 1.2 is line-height
+      const pageHeightMm = Math.max(contentHeight * 0.264583, 50); // Convert px to mm, minimum 50mm
+
+      // Create an iframe for printing with preview
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position: fixed; right: 0; top: 0; width: 80mm; height: 100%; border: none; background: white; box-shadow: -2px 0 5px rgba(0,0,0,0.1); z-index: 9999;';
+      document.body.appendChild(iframe);
+      
+      // Write the receipt content to the iframe
+      const doc = iframe.contentWindow?.document;
+      if (!doc) {
+        throw new Error('Could not access iframe document');
+      }
+
+      const htmlContent = `<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+              @page {
+                margin: 0mm;
+                size: 80mm auto;
+                page-break-after: avoid;
+                page-break-before: avoid;
+                page-break-inside: avoid;
+              }
+              body { 
+                font-family: 'Courier New', monospace; 
+                font-size: 25px; 
+                margin: 0mm; 
+                padding: 2mm;
+                width: 76mm; /* 80mm - 2mm padding on each side */
+                line-height: 1.2;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                min-height: auto;
+                overflow: visible;
+              }
+      pre { 
+        margin: 0; 
+        white-space: pre; 
+        font-size: 17px;
+        page-break-inside: avoid;
+        page-break-before: avoid;
+        page-break-after: avoid;
+        width: 78mm; /* Match body width */
+        font-family: 'Courier New', monospace;
+        line-height: 1.4;
+      }
+      .product-line {
+        margin-bottom: 4px;
+      }
+      .product-name {
+        display: block;
+        width: 100%;
+        font-weight: bold;
+        margin-bottom: 1px;
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        overflow: visible;
+        line-height: 1.2;
+      }
+      .product-details {
+        display: flex;
+        justify-content: space-between;
+        padding-left: 8px;
+      }
+      .product-quantity-price {
+        flex: 1;
+      }
+      .product-total {
+        text-align: right;
+        min-width: 70px;
+      }
+      .payment-details {
+        margin-top: 10px;
+        border-top: 1px dashed #000;
+        padding-top: 5px;
+      }
+      .payment-line {
+        display: flex;
+        justify-content: space-between;
+        margin: 2px 0;
+      }
+      .total-line {
+        font-weight: bold;
+        border-top: 1px dashed #000;
+        border-bottom: 1px dashed #000;
+        padding: 3px 0;
+        margin: 3px 0;
+      }
+              .receipt-content {
+                width: 100%;
+                max-width: 78mm;
+                overflow-wrap: break-word;
+                word-break: break-word;
+                page-break-after: avoid;
+                page-break-before: avoid;
+                page-break-inside: avoid;
+                display: inline-block;
+              }
+       @media print {
+         @page {
+           size: 80mm auto;
+           margin: 0mm;
+           page-break-after: avoid;
+           page-break-before: avoid;
+           page-break-inside: avoid;
+         }
+         html, body {
+           width: 80mm;
+           margin: 0mm;
+           padding: 0mm;
+           page-break-after: avoid;
+           page-break-before: avoid;
+           page-break-inside: avoid;
+           height: auto;
+           min-height: auto;
+         }
+         * {
+           page-break-inside: avoid !important;
+           page-break-after: avoid !important;
+           page-break-before: avoid !important;
+         }
+         .receipt-content {
+           page-break-inside: avoid !important;
+           display: block;
+         }
+       }
+    </style>
+  </head>
+  <body>
+    <div class="receipt-content">
+      <pre>${formattedReceiptText}</pre>
+    </div>
+    <script>
+      // Automatically print without dialog
+      window.onload = function() {
+        const mediaQueryList = window.matchMedia('print');
+        mediaQueryList.addListener(function(mql) {
+          if (!mql.matches) {
+            // After printing is done, remove the iframe
+            window.frameElement && window.frameElement.remove();
+          }
+        });
+        
+        window.print();
+      };
+    </script>
+  </body>
+</html>`;
+      
+      doc.open();
+      doc.write(htmlContent);
+      doc.close();
+
+      // Get list of available printers
+      if ('getPrinters' in iframe.contentWindow?.navigator) {
+        try {
+          const printers = await (iframe.contentWindow.navigator as any).getPrinters();
+          console.log('Available printers:', printers);
+          
+          // You can select a specific printer here
+          // const thermalPrinter = printers.find(p => p.name.includes('thermal'));
+        } catch (e) {
+          console.log('Printer enumeration not supported');
+        }
+      }
+
+      // Try to use silent printing if available
+      if ('webkitPrint' in iframe.contentWindow) {
+        // For Chromium-based browsers with silent printing
+        (iframe.contentWindow as any).webkitPrint({
+          silent: true,
+          printBackground: false,
+          deviceName: 'Xprinter XP-T361U', // Your thermal printer name
+          marginType: 'none',
+          shouldPrintBackgrounds: false,
+          shouldPrintSelectionOnly: false,
+          mediaSize: { 
+            width_microns: 80000,  // 80mm in microns
+            height_microns: Math.round(pageHeightMm * 1000), // Dynamic height in microns
+            is_continuous_feed: true,
+            custom_display_name: '80mm Receipt'
+          },
+          scaleFactor: 100,
+          headerFooterEnabled: false
+        });
+      } else if ('mozPrint' in iframe.contentWindow) {
+        // For Firefox with silent printing
+        (iframe.contentWindow as any).mozPrint({
+          silent: true,
+          printerName: 'Xprinter XP-T361U', // Your thermal printer name
+          marginType: 'none',
+          paperWidth: '80mm',
+          paperHeight: pageHeightMm + 'mm'
+        });
+      } else {
+        // For standard printing, add specific thermal printer settings
+        const printWindow = iframe.contentWindow;
+        if (printWindow) {
+          // Add thermal printer specific styles
+          const thermalStyle = printWindow.document.createElement('style');
+          thermalStyle.textContent = `
+            @media print {
+              @page {
+                size: 80mm auto !important;
+                margin: 0mm !important;
+                page-break-after: avoid !important;
+                page-break-before: avoid !important;
+                page-break-inside: avoid !important;
+              }
+              html, body {
+                width: 80mm !important;
+                margin: 0mm !important;
+                padding: 0mm !important;
+                height: auto !important;
+                page-break-inside: avoid !important;
+              }
+              * {
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+                page-break-before: avoid !important;
+              }
+            }
+          `;
+          printWindow.document.head.appendChild(thermalStyle);
+          
+          // Call print with a slight delay to ensure styles are applied
+          setTimeout(() => {
+            printWindow.print();
+          }, 100);
+        }
+      }
+
+      // Listen for print completion
+      const checkPrintCompletion = setInterval(() => {
+        if (iframe.contentWindow?.document.readyState === 'complete') {
+          clearInterval(checkPrintCompletion);
+          document.body.removeChild(iframe);
+        }
+      }, 1000);
+
+      toast.success('Receipt sent to printer');
     } catch (error) {
-      toast.error('Failed to print receipt')
-      console.error(error)
+      toast.error('Failed to print receipt');
+      console.error(error);
     }
   }
 
@@ -334,8 +612,10 @@ export default function NewSalePage() {
                       ) : (
                         cart.map((item) => (
                           <tr key={item.productId} className="hover:bg-secondary-50 transition-colors">
-                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-secondary-900">
-                              {item.name}
+                            <td className="py-4 pl-4 pr-3 text-sm font-medium text-secondary-900">
+                              <div style={{ maxWidth: '300px', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+                                {item.name}
+                              </div>
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary-600">
                               <input
@@ -374,6 +654,39 @@ export default function NewSalePage() {
                         </th>
                         <td className="px-3 py-4 text-sm font-semibold text-secondary-900">
                           LKR {calculateTotal().toFixed(2)}
+                        </td>
+                        <td></td>
+                      </tr>
+                      <tr>
+                        <th
+                          scope="row"
+                          colSpan={2}
+                          className="pl-4 pr-3 py-4 text-right text-sm font-medium text-secondary-900"
+                        >
+                          Cash Amount
+                        </th>
+                        <td className="px-3 py-4 text-sm text-secondary-900">
+                          <input
+                            type="number"
+                            value={cashAmount}
+                            onChange={(e) => setCashAmount(Number(e.target.value))}
+                            className="input-field w-32"
+                            min={calculateTotal()}
+                            step="0.01"
+                          />
+                        </td>
+                        <td></td>
+                      </tr>
+                      <tr>
+                        <th
+                          scope="row"
+                          colSpan={2}
+                          className="pl-4 pr-3 py-4 text-right text-sm font-medium text-secondary-900"
+                        >
+                          Balance
+                        </th>
+                        <td className="px-3 py-4 text-sm font-semibold text-green-600">
+                          LKR {(cashAmount - calculateTotal()).toFixed(2)}
                         </td>
                         <td></td>
                       </tr>
