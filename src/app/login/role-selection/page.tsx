@@ -1,9 +1,10 @@
 'use client'
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-export default function RoleSelection() {
+function RoleSelectionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
@@ -11,16 +12,13 @@ export default function RoleSelection() {
 
   const handleAdminLogin = () => {
     if (isNewStore) {
-      // Navigate to store signup
       router.push(`/login/store-signup?email=${encodeURIComponent(email)}`);
     } else {
-      // Navigate to admin login
       router.push(`/login/admin?email=${encodeURIComponent(email)}`);
     }
   };
 
   const handleCashierLogin = () => {
-    // For cashier, we need to ask for username
     router.push('/login/cashier');
   };
 
@@ -49,7 +47,7 @@ export default function RoleSelection() {
                 <svg className="mr-3 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 2.676-.732 5.162-2.348 7.335-4.622.145-.153.145-.42 0-.573A11.955 11.955 0 0112 2.944z" />
                 </svg>
-{isNewStore ? 'Setup Store as Admin' : 'Continue as Admin'}
+                {isNewStore ? 'Setup Store as Admin' : 'Continue as Admin'}
               </div>
             </button>
             
@@ -77,5 +75,13 @@ export default function RoleSelection() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RoleSelection() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <RoleSelectionContent />
+    </Suspense>
   );
 }

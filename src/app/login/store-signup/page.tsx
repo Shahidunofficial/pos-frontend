@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-export default function StoreSignup() {
+function StoreSignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { storeSignup } = useAuth();
@@ -157,5 +158,13 @@ export default function StoreSignup() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function StoreSignup() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <StoreSignupContent />
+    </Suspense>
   );
 }
