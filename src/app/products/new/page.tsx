@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import toast from 'react-hot-toast'
 import { apiService } from '../../../API'
+import { useAuth } from '@/hooks/useAuth'
 
 const variantSchema = z.object({
   id: z.string(),
@@ -48,6 +49,7 @@ interface Category {
 
 export default function NewProductPage() {
   const router = useRouter()
+  const {user} = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedMainCategory, setSelectedMainCategory] = useState('')
@@ -323,7 +325,15 @@ export default function NewProductPage() {
   const onSubmit = async (data: ProductFormData) => {
     setIsSubmitting(true)
     try {
-      const newProduct = await apiService.createProduct(data)
+      if(!user){
+       throw new Error('User not found')
+      }
+
+      const productData={
+        ...data,
+        userId: user.id
+      }
+      const newProduct = await apiService.createProduct(productData)
       toast.success('Product created successfully')
       router.push('/products')
     } catch (error) {
