@@ -29,7 +29,7 @@ const productSchema = z.object({
   purchasedPrice: z.number().min(0.01, 'Purchased price must be greater than 0'),
   sellingPrice: z.number().min(0.01, 'Selling price must be greater than 0'),
   description: z.string().min(1, 'Description is required'),
-  images: z.array(z.string()).min(1, 'At least one image is required').max(3, 'Maximum 3 images allowed'),
+  images: z.array(z.string()).max(3, 'Maximum 3 images allowed').optional(),
   specifications: z.record(z.string(), z.string()).optional(),
   availableOptions: z.object({
     color: z.array(z.string()).optional(),
@@ -56,6 +56,7 @@ export default function NewProductPage() {
   const [selectedSubCategory, setSelectedSubCategory] = useState('')
   const [specifications, setSpecifications] = useState<{ key: string; value: string }[]>([{ key: '', value: '' }])
   const [imageUrls, setImageUrls] = useState<string[]>([])
+  const [imageFiles, setImageFiles] = useState<File[]>([])
   const [colorOptions, setColorOptions] = useState<string[]>([])
   const [ramOptions, setRamOptions] = useState<string[]>([])
   const [storageOptions, setStorageOptions] = useState<string[]>([])
@@ -144,12 +145,18 @@ export default function NewProductPage() {
       return
     }
 
-    // Here you would typically upload the files to your storage service
-    // For now, we'll just create local URLs
-    const newUrls = Array.from(files).map(file => URL.createObjectURL(file))
+    // Store the actual File objects for upload
+    const newFiles = Array.from(files)
+    const updatedFiles = [...imageFiles, ...newFiles]
+    setImageFiles(updatedFiles)
+
+    // Create blob URLs for preview
+    const newUrls = newFiles.map(file => URL.createObjectURL(file))
     const updatedUrls = [...imageUrls, ...newUrls]
     setImageUrls(updatedUrls)
-    setValue('images', updatedUrls)
+    
+    // Set empty array for images field since we'll send files separately
+    setValue('images', [])
   }
 
   const addSpecification = () => {
@@ -329,11 +336,20 @@ export default function NewProductPage() {
        throw new Error('User not found')
       }
 
-      const productData={
-        ...data,
-        userId: user.id
+      if (imageFiles.length === 0) {
+        toast.error('Please upload at least one image')
+        setIsSubmitting(false)
+        return
       }
-      const newProduct = await apiService.createProduct(productData)
+
+      const productData = {
+        ...data,
+        userId: user.id,
+        images: [] // Will be replaced by uploaded S3 URLs
+      }
+      
+      // Pass the File objects to the API for S3 upload
+      const newProduct = await apiService.createProduct(productData, imageFiles)
       toast.success('Product created successfully')
       router.push('/products')
     } catch (error) {
@@ -568,8 +584,10 @@ export default function NewProductPage() {
                         type="button"
                         onClick={() => {
                           const newUrls = imageUrls.filter((_, i) => i !== index)
+                          const newFiles = imageFiles.filter((_, i) => i !== index)
                           setImageUrls(newUrls)
-                          setValue('images', newUrls)
+                          setImageFiles(newFiles)
+                          setValue('images', [])
                         }}
                         className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 m-1"
                       >

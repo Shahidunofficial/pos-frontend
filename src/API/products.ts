@@ -1,4 +1,4 @@
-import { makeRequest } from './config';
+import { makeRequest, API_BASE_URL } from './config';
 import { Product, UpdateProductRequest } from './types';
 
 export const productsApi = {
@@ -12,8 +12,60 @@ export const productsApi = {
     return makeRequest<Product>(`/products/${id}`);
   },
 
-  // Create new product
-  async create(product: Omit<Product, '_id' | 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> {
+  // Create new product with image files (uploads to AWS S3)
+  async create(product: Omit<Product, '_id' | 'id' | 'createdAt' | 'updatedAt'>, imageFiles?: File[]): Promise<Product> {
+    // If image files are provided, use FormData
+    if (imageFiles && imageFiles.length > 0) {
+      console.log('🖼️  Frontend: Creating product with image files:', {
+        productName: product.name,
+        filesCount: imageFiles.length,
+        files: imageFiles.map(f => ({ name: f.name, size: f.size, type: f.type }))
+      });
+
+      const formData = new FormData();
+      
+      imageFiles.forEach((file, index) => {
+        console.log(`📎 Appending file ${index + 1}:`, file.name);
+        formData.append('images', file);
+      });
+      
+      formData.append('name', product.name);
+      formData.append('brand', product.brand);
+      formData.append('basePrice', product.basePrice.toString());
+      formData.append('purchasedPrice', product.purchasedPrice.toString());
+      formData.append('sellingPrice', product.sellingPrice.toString());
+      formData.append('mainCategory', product.mainCategory);
+      if (product.subCategory) formData.append('subCategory', product.subCategory);
+      if (product.subSubCategory) formData.append('subSubCategory', product.subSubCategory);
+      formData.append('description', product.description);
+      if (product.specifications) formData.append('specifications', JSON.stringify(product.specifications));
+      if (product.availableOptions) formData.append('availableOptions', JSON.stringify(product.availableOptions));
+      if (product.variants) formData.append('variants', JSON.stringify(product.variants));
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      
+      console.log('📤 Sending FormData to backend...');
+      const response = await fetch(`${API_BASE_URL}/products`, {
+        method: 'POST',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: formData,
+      });
+
+      console.log('📥 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Error response:', errorData);
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ Product created successfully:', result._id);
+      return result;
+    }
+    
+    // Otherwise, use JSON (for pre-uploaded image URLs)
+    console.log('📝 Creating product with image URLs (no files)');
     return makeRequest<Product>('/products', {
       method: 'POST',
       body: JSON.stringify(product),
@@ -51,73 +103,8 @@ export const productsApi = {
     });
   },
 
-  // Update pricing (purchased and selling prices)
-  async updatePricing(id: string, pricing: { purchasedPrice?: number; sellingPrice?: number; basePrice?: number }): Promise<Product> {
-    return makeRequest<Product>(`/products/${id}/pricing`, {
-      method: 'PUT',
-      body: JSON.stringify(pricing),
-    });
-  },
-
-  // Search products by various criteria
-  async search(query: {
-    name?: string;
-    brand?: string;
-    category?: string;
-    minPrice?: number;
-    maxPrice?: number;
-  }): Promise<Product[]> {
-    const searchParams = new URLSearchParams();
-    Object.entries(query).forEach(([key, value]) => {
-      if (value !== undefined) {
-        searchParams.append(key, value.toString());
-      }
-    });
-    
-    return makeRequest<Product[]>(`/products/search?${searchParams.toString()}`);
-  },
-
-  // Get products by category
-  async getByCategory(category: string): Promise<Product[]> {
-    return makeRequest<Product[]>(`/products/category/${encodeURIComponent(category)}`);
-  },
-
-  // Get low stock products
-  async getLowStock(threshold: number = 10): Promise<Product[]> {
-    return makeRequest<Product[]>(`/products/low-stock?threshold=${threshold}`);
-  },
-
-  // Bulk update products
-  async bulkUpdate(updates: Array<{ id: string; updates: UpdateProductRequest }>): Promise<Product[]> {
-    return makeRequest<Product[]>('/products/bulk-update', {
-      method: 'PUT',
-      body: JSON.stringify({ updates }),
-    });
-  },
-  
-
   // Get available products for sales
   async getAvailable(): Promise<Product[]> {
     return makeRequest<Product[]>('/sales/products/available');
   },
-
-  // Quick stock update for individual products
-  async quickStockUpdate(id: string, stockChange: number): Promise<Product> {
-    return makeRequest<Product>(`/products/${id}/stock`, {
-      method: 'PUT',
-      body: JSON.stringify({ stockChange }),
-    });
-  },
-
-  // Update proportional pricing based on purchased price
-  async updateProportionalPricing(id: string, purchasedPrice: number, profitMargin: number): Promise<Product> {
-    const sellingPrice = purchasedPrice * (1 + profitMargin / 100);
-    return makeRequest<Product>(`/products/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ 
-        purchasedPrice, 
-        sellingPrice: Math.round(sellingPrice * 100) / 100 
-      }),
-    });
-  }
-}; 
+};
