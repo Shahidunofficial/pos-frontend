@@ -107,4 +107,22 @@ export const productsApi = {
   async getAvailable(): Promise<Product[]> {
     return makeRequest<Product[]>('/sales/products/available');
   },
+
+  // Quick stock update (alias for updateStock)
+  async quickStockUpdate(id: string, stockChange: number): Promise<Product> {
+    return this.updateStock(id, stockChange);
+  },
+
+  // Update proportional pricing based on profit margin
+  async updateProportionalPricing(id: string, basePrice: number, profitMarginPercent: number): Promise<Product> {
+    const sellingPrice = basePrice * (1 + profitMarginPercent / 100);
+    return makeRequest<Product>(`/products/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ 
+        basePrice,
+        sellingPrice,
+        purchasedPrice: basePrice
+      }),
+    });
+  },
 };
