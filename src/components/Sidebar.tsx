@@ -9,6 +9,7 @@ import {
   DocumentTextIcon,
   CubeIcon,
   ChartBarIcon,
+  ShoppingBagIcon,
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Products', href: '/products', icon: CubeIcon },
   { name: 'Categories', href: '/categories/manage', icon: CubeIcon },
+  { name: 'Orders', href: '/orders', icon: ShoppingBagIcon },
   { name: 'New Sale', href: '/sales/new', icon: ShoppingCartIcon },
   { name: 'Sales Reports', href: '/SalesReport', icon: ChartBarIcon },
   { name: 'Invoices', href: '/invoices', icon: DocumentTextIcon },
