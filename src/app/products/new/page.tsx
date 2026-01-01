@@ -145,13 +145,68 @@ export default function NewProductPage() {
       return
     }
 
+    // Validate each image
+    const validFiles: File[] = []
+    const newUrls: string[] = []
+
+    for (const file of Array.from(files)) {
+      // Check file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 5MB limit`)
+        continue
+      }
+
+      // Check file type
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+        toast.error(`${file.name} is not a valid image type (JPEG, PNG, or WebP only)`)
+        continue
+      }
+
+      // Validate image dimensions (must be square or near-square)
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const img = new Image()
+          const objectUrl = URL.createObjectURL(file)
+
+          img.onload = () => {
+            const aspectRatio = img.width / img.height
+            const minRatio = 0.8 // 4:5 portrait
+            const maxRatio = 1.25 // 5:4 landscape
+
+            if (aspectRatio < minRatio || aspectRatio > maxRatio) {
+              URL.revokeObjectURL(objectUrl)
+              toast.error(
+                `${file.name} must be square or near-square. Current: ${img.width}x${img.height} (ratio: ${aspectRatio.toFixed(2)})`
+              )
+              reject(new Error('Invalid aspect ratio'))
+            } else {
+              validFiles.push(file)
+              newUrls.push(objectUrl)
+              resolve()
+            }
+          }
+
+          img.onerror = () => {
+            URL.revokeObjectURL(objectUrl)
+            toast.error(`Failed to load ${file.name}`)
+            reject(new Error('Image load error'))
+          }
+
+          img.src = objectUrl
+        })
+      } catch (error) {
+        // Error already handled in toast
+        continue
+      }
+    }
+
+    if (validFiles.length === 0) return
+
     // Store the actual File objects for upload
-    const newFiles = Array.from(files)
-    const updatedFiles = [...imageFiles, ...newFiles]
+    const updatedFiles = [...imageFiles, ...validFiles]
     setImageFiles(updatedFiles)
 
     // Create blob URLs for preview
-    const newUrls = newFiles.map(file => URL.createObjectURL(file))
     const updatedUrls = [...imageUrls, ...newUrls]
     setImageUrls(updatedUrls)
     

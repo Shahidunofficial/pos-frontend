@@ -34,6 +34,8 @@ export default function EditProductPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [specifications, setSpecifications] = useState<{ key: string; value: string }[]>([])
   const [imageUrls, setImageUrls] = useState<string[]>([])
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [hasNewImages, setHasNewImages] = useState(false)
 
   const {
     register,
@@ -99,12 +101,70 @@ export default function EditProductPage() {
       return
     }
 
-    // Here you would typically upload the files to your storage service
-    // For now, we'll just create local URLs
-    const newUrls = Array.from(files).map(file => URL.createObjectURL(file))
-    const updatedUrls = [...imageUrls, ...newUrls]
-    setImageUrls(updatedUrls)
-    setValue('images', updatedUrls)
+    // Validate each image
+    const validFiles: File[] = []
+    const newUrls: string[] = []
+
+    for (const file of Array.from(files)) {
+      // Check file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 5MB limit`)
+        continue
+      }
+
+      // Check file type
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+        toast.error(`${file.name} is not a valid image type (JPEG, PNG, or WebP only)`)
+        continue
+      }
+
+      // Validate image dimensions (must be square or near-square)
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const img = new Image()
+          const objectUrl = URL.createObjectURL(file)
+
+          img.onload = () => {
+            const aspectRatio = img.width / img.height
+            const minRatio = 0.8 // 4:5 portrait
+            const maxRatio = 1.25 // 5:4 landscape
+
+            if (aspectRatio < minRatio || aspectRatio > maxRatio) {
+              URL.revokeObjectURL(objectUrl)
+              toast.error(
+                `${file.name} must be square or near-square. Current: ${img.width}x${img.height} (ratio: ${aspectRatio.toFixed(2)})`
+              )
+              reject(new Error('Invalid aspect ratio'))
+            } else {
+              validFiles.push(file)
+              newUrls.push(objectUrl)
+              resolve()
+            }
+          }
+
+          img.onerror = () => {
+            URL.revokeObjectURL(objectUrl)
+            toast.error(`Failed to load ${file.name}`)
+            reject(new Error('Image load error'))
+          }
+
+          img.src = objectUrl
+        })
+      } catch (error) {
+        // Error already handled in toast
+        continue
+      }
+    }
+
+    if (validFiles.length === 0) return
+
+    // Store the actual File objects for upload
+    setImageFiles(validFiles)
+    setImageUrls(newUrls)
+    setHasNewImages(true)
+    
+    // Don't update form value yet - we'll handle this on submit
+    setValue('images', newUrls)
   }
 
   const addSpecification = () => {
@@ -134,34 +194,87 @@ export default function EditProductPage() {
   const onSubmit = async (data: EditProductFormData) => {
     setIsSubmitting(true)
     try {
-      const updateData: UpdateProductRequest = {
-        name: data.name,
-        brand: data.brand,
-        mainCategory: data.mainCategory,
-        subCategory: data.subCategory || undefined,
-        subSubCategory: data.subSubCategory || undefined,
-        basePrice: data.basePrice,
-        purchasedPrice: data.purchasedPrice,
-        sellingPrice: data.sellingPrice,
-        description: data.description,
-        images: data.images,
-        specifications: data.specifications || {},
-      }
+      // If new images were uploaded, we need to upload them first
+      if (hasNewImages && imageFiles.length > 0) {
+        // Upload files using the same approach as create
+        const formData = new FormData()
+        
+        imageFiles.forEach((file) => {
+          formData.append('images', file)
+        })
+        
+        // Add all product data to formData
+        formData.append('name', data.name)
+        formData.append('brand', data.brand)
+        formData.append('basePrice', data.basePrice.toString())
+        formData.append('purchasedPrice', data.purchasedPrice.toString())
+        formData.append('sellingPrice', data.sellingPrice.toString())
+        formData.append('mainCategory', data.mainCategory)
+        if (data.subCategory) formData.append('subCategory', data.subCategory)
+        if (data.subSubCategory) formData.append('subSubCategory', data.subSubCategory)
+        formData.append('description', data.description)
+        if (data.specifications) formData.append('specifications', JSON.stringify(data.specifications))
+        
+        // Add existing product data for variants and options
+        if (product && product.variants && product.variants.length > 0) {
+          formData.append('variants', JSON.stringify(product.variants))
+        }
+        if (product && product.availableOptions) {
+          formData.append('availableOptions', JSON.stringify(product.availableOptions))
+        }
 
-      // Only include variants and availableOptions if they exist in the current product
-      if (product && product.variants && product.variants.length > 0) {
-        updateData.variants = product.variants;
-      }
-      if (product && product.availableOptions) {
-        updateData.availableOptions = product.availableOptions;
-      }
+        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+        
+        console.log('📤 Sending FormData to backend for update...')
+        const response = await fetch(`http://localhost:3003/products/${productId}`, {
+          method: 'PUT',
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: formData,
+        })
 
-      console.log('Updating product with data:', updateData);
-      const updatedProduct = await productsApi.update(productId, updateData)
-      console.log('Product updated:', updatedProduct);
-      
-      toast.success('Product updated successfully')
-      router.push('/products')
+        console.log('📥 Response status:', response.status)
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          console.error('❌ Error response:', errorData)
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+        }
+        
+        const result = await response.json()
+        console.log('✅ Product updated successfully with new images')
+        toast.success('Product updated successfully')
+        router.push('/products')
+      } else {
+        // No new images, use regular JSON update
+        const updateData: UpdateProductRequest = {
+          name: data.name,
+          brand: data.brand,
+          mainCategory: data.mainCategory,
+          subCategory: data.subCategory || undefined,
+          subSubCategory: data.subSubCategory || undefined,
+          basePrice: data.basePrice,
+          purchasedPrice: data.purchasedPrice,
+          sellingPrice: data.sellingPrice,
+          description: data.description,
+          images: data.images,
+          specifications: data.specifications || {},
+        }
+
+        // Only include variants and availableOptions if they exist in the current product
+        if (product && product.variants && product.variants.length > 0) {
+          updateData.variants = product.variants;
+        }
+        if (product && product.availableOptions) {
+          updateData.availableOptions = product.availableOptions;
+        }
+
+        console.log('Updating product with data:', updateData)
+        const updatedProduct = await productsApi.update(productId, updateData)
+        console.log('Product updated:', updatedProduct)
+        
+        toast.success('Product updated successfully')
+        router.push('/products')
+      }
     } catch (error) {
       console.error('Error updating product:', error)
       if (error instanceof Error) {
