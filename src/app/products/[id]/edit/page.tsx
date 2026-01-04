@@ -36,6 +36,7 @@ export default function EditProductPage() {
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [hasNewImages, setHasNewImages] = useState(false)
+  const [variants, setVariants] = useState<any[]>([])
 
   const {
     register,
@@ -70,6 +71,9 @@ export default function EditProductPage() {
         
         // Set state variables
         setImageUrls(productData.images)
+        
+        // Set variants
+        setVariants(productData.variants || [])
         
         // Convert specifications object to array
         const specsArray = Object.entries(productData.specifications || {}).map(([key, value]) => ({
@@ -191,6 +195,14 @@ export default function EditProductPage() {
     setValue('specifications', specsObject)
   }
 
+  const handleVariantChange = (index: number, field: string, value: string | number) => {
+    const newVariants = [...variants]
+    newVariants[index][field] = field === 'stock' || field === 'purchasedPrice' || field === 'sellingPrice' 
+      ? parseFloat(value.toString()) 
+      : value
+    setVariants(newVariants)
+  }
+
   const onSubmit = async (data: EditProductFormData) => {
     setIsSubmitting(true)
     try {
@@ -215,10 +227,12 @@ export default function EditProductPage() {
         formData.append('description', data.description)
         if (data.specifications) formData.append('specifications', JSON.stringify(data.specifications))
         
-        // Add existing product data for variants and options
-        if (product && product.variants && product.variants.length > 0) {
-          formData.append('variants', JSON.stringify(product.variants))
+        // Add variants
+        if (variants && variants.length > 0) {
+          formData.append('variants', JSON.stringify(variants))
         }
+        
+        // Add existing product data for options
         if (product && product.availableOptions) {
           formData.append('availableOptions', JSON.stringify(product.availableOptions))
         }
@@ -258,12 +272,10 @@ export default function EditProductPage() {
           description: data.description,
           images: data.images,
           specifications: data.specifications || {},
+          variants: variants.length > 0 ? variants : undefined,
         }
 
-        // Only include variants and availableOptions if they exist in the current product
-        if (product && product.variants && product.variants.length > 0) {
-          updateData.variants = product.variants;
-        }
+        // Only include availableOptions if they exist in the current product
         if (product && product.availableOptions) {
           updateData.availableOptions = product.availableOptions;
         }
@@ -519,6 +531,71 @@ export default function EditProductPage() {
                 </button>
               </div>
             </div>
+
+            {/* Variants Editor */}
+            {variants && variants.length > 0 && (
+              <div className="sm:col-span-6">
+                <label className="block text-sm font-medium leading-6 text-gray-900 mb-4">
+                  Product Variants - Edit Prices & Stock
+                </label>
+                <div className="mt-2 space-y-4">
+                  {variants.map((variant, index) => (
+                    <div key={variant.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        {/* Variant Info */}
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Variant</label>
+                          <div className="text-sm font-semibold text-gray-900">
+                            {[variant.color, variant.ram, variant.storage].filter(Boolean).join(' / ') || 'Default'}
+                          </div>
+                        </div>
+                        
+                        {/* Purchased Price */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Purchased Price (LKR)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={variant.purchasedPrice}
+                            onChange={(e) => handleVariantChange(index, 'purchasedPrice', e.target.value)}
+                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-primary-600 sm:text-sm"
+                          />
+                        </div>
+                        
+                        {/* Selling Price */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Selling Price (LKR)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={variant.sellingPrice}
+                            onChange={(e) => handleVariantChange(index, 'sellingPrice', e.target.value)}
+                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-primary-600 sm:text-sm"
+                          />
+                        </div>
+                        
+                        {/* Stock */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Stock
+                          </label>
+                          <input
+                            type="number"
+                            value={variant.stock}
+                            onChange={(e) => handleVariantChange(index, 'stock', e.target.value)}
+                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-primary-600 sm:text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
