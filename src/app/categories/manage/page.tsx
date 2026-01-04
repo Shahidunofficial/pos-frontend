@@ -21,6 +21,11 @@ export default function ManageCategories() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedLevel, setSelectedLevel] = useState(1)
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; categoryId: string; categoryName: string }>({
+    isOpen: false,
+    categoryId: '',
+    categoryName: ''
+  })
 
   const {
     register,
@@ -83,6 +88,23 @@ export default function ManageCategories() {
     })
   }
 
+  const handleDeleteCategory = async () => {
+    try {
+      await apiService.deleteCategory(deleteModal.categoryId)
+      toast.success('Category deleted successfully')
+      setDeleteModal({ isOpen: false, categoryId: '', categoryName: '' })
+      fetchCategories()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete category')
+      console.error(error)
+    }
+  }
+
+  const openDeleteModal = (categoryId: string, categoryName: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDeleteModal({ isOpen: true, categoryId, categoryName })
+  }
+
   const getAvailableParentCategories = (level: number) => {
     if (level === 1) return []
     
@@ -113,17 +135,28 @@ export default function ManageCategories() {
     return (
       <div key={category.id} className="select-none">
         <div 
-          className={`flex items-center py-2 px-2 hover:bg-gray-50 rounded-md cursor-pointer`}
+          className={`flex items-center py-2 px-2 hover:bg-gray-50 rounded-md cursor-pointer group`}
           style={{ marginLeft: `${depth * 16}px` }}
-          onClick={() => hasChildren && toggleCategory(category.id)}
         >
-          <div className="w-4 h-4 flex items-center justify-center mr-2">
-            {hasChildren && (
-              <span className="text-gray-600">{isExpanded ? '▼' : '▶'}</span>
-            )}
+          <div 
+            className="flex-1 flex items-center"
+            onClick={() => hasChildren && toggleCategory(category.id)}
+          >
+            <div className="w-4 h-4 flex items-center justify-center mr-2">
+              {hasChildren && (
+                <span className="text-gray-600">{isExpanded ? '▼' : '▶'}</span>
+              )}
+            </div>
+            <span className="flex-1 font-medium">{category.name}</span>
+            <span className="text-sm text-gray-500 mr-4">Level {category.level}</span>
           </div>
-          <span className="flex-1 font-medium">{category.name}</span>
-          <span className="text-sm text-gray-500 mr-4">Level {category.level}</span>
+          <button
+            onClick={(e) => openDeleteModal(category.id, category.name, e)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded text-red-600 hover:text-red-800"
+            title="Delete category"
+          >
+            <FiTrash2 className="h-4 w-4" />
+          </button>
         </div>
         {isExpanded && hasChildren && (
           <div>
@@ -221,6 +254,45 @@ export default function ManageCategories() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <FiTrash2 className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Delete Category</h3>
+                <p className="text-sm text-gray-500 mt-1">This action cannot be undone</p>
+              </div>
+            </div>
+            <div className="mb-4">
+              <p className="text-sm text-gray-700">
+                Are you sure you want to delete <span className="font-semibold">{deleteModal.categoryName}</span>? 
+                This will also delete all its subcategories and may affect products using this category.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteModal({ isOpen: false, categoryId: '', categoryName: '' })}
+                className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteCategory}
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete Category
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

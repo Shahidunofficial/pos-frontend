@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { PlusIcon, MagnifyingGlassIcon, PencilIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, MagnifyingGlassIcon, PencilIcon, AdjustmentsHorizontalIcon, TrashIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { apiService, Product, productsApi, categoriesApi, Category } from '../../API'
@@ -25,6 +25,11 @@ export default function ProductsPage() {
   })
   const [stockChange, setStockChange] = useState<number>(0)
   const [profitMargin, setProfitMargin] = useState<number>(20)
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; productId: string; productName: string }>({
+    isOpen: false,
+    productId: '',
+    productName: ''
+  })
 
   // Fetch categories
   const fetchCategories = async () => {
@@ -135,6 +140,24 @@ export default function ProductsPage() {
     setPricingModal({ isOpen: true, productId, currentPrice })
   }
 
+  // Handle product delete
+  const handleDeleteProduct = async () => {
+    try {
+      await productsApi.delete(deleteModal.productId)
+      toast.success('Product deleted successfully')
+      setDeleteModal({ isOpen: false, productId: '', productName: '' })
+      fetchProducts() // Refresh the list
+    } catch (error) {
+      toast.error('Failed to delete product')
+      console.error(error)
+    }
+  }
+
+  // Open delete modal
+  const openDeleteModal = (productId: string, productName: string) => {
+    setDeleteModal({ isOpen: true, productId, productName })
+  }
+
   // Helper function to render category options recursively
   const renderCategoryOptions = (categories: Category[]) => {
     return categories.map(category => (
@@ -241,7 +264,7 @@ export default function ProductsPage() {
                     Quick Actions
                   </th>
                   <th scope="col" className="relative py-4 pl-3 pr-6">
-                    <span className="sr-only">Edit</span>
+                    <span className="sr-only">Actions</span>
                   </th>
                 </tr>
               </thead>
@@ -344,12 +367,22 @@ export default function ProductsPage() {
                         </div>
                       </td>
                       <td className="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
-                        <Link
-                          href={`/products/${product.id || product._id}/edit`}
-                          className="text-primary-600 hover:text-primary-900 transition-colors duration-200"
-                        >
-                          Edit<span className="sr-only">, {product.name}</span>
-                        </Link>
+                        <div className="flex items-center justify-end gap-3">
+                          <Link
+                            href={`/products/${product.id || product._id}/edit`}
+                            className="text-primary-600 hover:text-primary-900 transition-colors duration-200 flex items-center gap-1"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                            Edit
+                          </Link>
+                          <button
+                            onClick={() => openDeleteModal(product.id || product._id || '', product.name)}
+                            className="text-red-600 hover:text-red-900 transition-colors duration-200 flex items-center gap-1"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -398,7 +431,7 @@ export default function ProductsPage() {
 
         {/* Pricing Update Modal */}
         {pricingModal.isOpen && (
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Update Pricing</h3>
               <div className="space-y-4">
@@ -428,6 +461,45 @@ export default function ProductsPage() {
                     Update Pricing
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteModal.isOpen && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <TrashIcon className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Delete Product</h3>
+                  <p className="text-sm text-gray-500 mt-1">This action cannot be undone</p>
+                </div>
+              </div>
+              <div className="mb-4">
+                <p className="text-sm text-gray-700">
+                  Are you sure you want to delete <span className="font-semibold">{deleteModal.productName}</span>? 
+                  This will permanently remove the product from your inventory.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModal({ isOpen: false, productId: '', productName: '' })}
+                  className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteProduct}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Delete Product
+                </button>
               </div>
             </div>
           </div>

@@ -34,4 +34,6 @@ export const apiService = {
   // Categories
   getCategories: categoriesApi.getAll,
   createCategory: categoriesApi.create,
+  updateCategory: categoriesApi.update,
+  deleteCategory: categoriesApi.delete,
 }; 

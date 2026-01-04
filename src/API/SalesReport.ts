@@ -103,5 +103,9 @@ export const SalesReportApi = {
   async getProfitOfTheMonth(): Promise<number> {
     const overview = await this.getSalesOverview();
     return overview.monthToDateRevenue;
+  },
+
+  async getDateRangeSales(startDate: string, endDate: string): Promise<Sale[]> {
+    return makeRequest<Sale[]>(`/reports/date-range?startDate=${startDate}&endDate=${endDate}`);
   }
 };

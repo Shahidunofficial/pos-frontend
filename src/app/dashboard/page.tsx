@@ -4,14 +4,7 @@ import { useState, useEffect } from 'react'
 import { CurrencyDollarIcon, ShoppingCartIcon, UserGroupIcon, ChartBarIcon } from '@heroicons/react/24/outline'
 import toast, { Toaster } from 'react-hot-toast'
 import MainLayout from '@/components/MainLayout'
-
-interface SalesOverview {
-  totalSales: number
-  totalRevenue: number
-  averageOrderValue: number
-  totalProducts: number
-  topSellingProducts: ProductSalesReport[]
-}
+import { SalesReportApi, SalesOverview as SalesOverviewType, Sale as SaleType } from '@/API/SalesReport'
 
 interface ProductSalesReport {
   productId: string
@@ -21,27 +14,16 @@ interface ProductSalesReport {
   averagePrice: number
 }
 
-interface Sale {
-  _id: string
-  items: Array<{
-    productId: string
-    quantity: number
-    price: number
-  }>
-  total: number
-  createdAt: string
-  customerName?: string
-}
-
 export default function Dashboard() {
-  const [overview, setOverview] = useState<SalesOverview>({
-    totalSales: 0,
-    totalRevenue: 0,
-    averageOrderValue: 0,
-    totalProducts: 0,
+  const [overview, setOverview] = useState<SalesOverviewType>({
+    todaysSales: 0,
+    todaysRevenue: 0,
+    monthToDateSales: 0,
+    monthToDateRevenue: 0,
+    activeOrders: 0,
     topSellingProducts: []
   })
-  const [recentSales, setRecentSales] = useState<Sale[]>([])
+  const [recentSales, setRecentSales] = useState<SaleType[]>([])
   const [loading, setLoading] = useState(true)
 
   // Fetch dashboard data
@@ -49,12 +31,9 @@ export default function Dashboard() {
     try {
       setLoading(true)
       
-      // Fetch sales overview
-      const overviewResponse = await fetch('http://localhost:3001/reports/overview')
-      if (overviewResponse.ok) {
-        const overviewData = await overviewResponse.json()
-        setOverview(overviewData)
-      }
+      // Fetch sales overview using the API
+      const overviewData = await SalesReportApi.getSalesOverview()
+      setOverview(overviewData)
 
       // Fetch recent sales using the new analytics endpoint
       const today = new Date()
@@ -62,12 +41,9 @@ export default function Dashboard() {
       const startDate = thirtyDaysAgo.toISOString().split('T')[0]
       const endDate = today.toISOString().split('T')[0]
       
-      const salesResponse = await fetch(`http://localhost:3001/reports/date-range?startDate=${startDate}&endDate=${endDate}`)
-      if (salesResponse.ok) {
-        const salesData = await salesResponse.json()
-        // Get the most recent 5 sales
-        setRecentSales(salesData.slice(-5).reverse())
-      }
+      const salesData = await SalesReportApi.getDateRangeSales(startDate, endDate)
+      // Get the most recent 5 sales
+      setRecentSales(salesData.slice(-5).reverse())
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
       toast.error('Failed to load dashboard data')
@@ -83,31 +59,31 @@ export default function Dashboard() {
   const stats = overview ? [
     { 
       name: 'Total Sales', 
-      value: `LKR${(overview.totalRevenue || 0).toFixed(2)}`, // Add null check with default value
-      change: `LKR${overview.totalSales || 0} transactions`, 
+      value: `LKR${(overview.todaysRevenue || 0).toFixed(2)}`,
+      change: `${overview.todaysSales || 0} transactions today`, 
       changeType: 'positive' as const, 
       icon: CurrencyDollarIcon 
     },
     { 
-      name: 'Average Order', 
-      value: `LKR${(overview.averageOrderValue || 0).toFixed(2)}`, // Add null check here too
-      change: 'Per transaction', 
+      name: 'Monthly Revenue', 
+      value: `LKR${(overview.monthToDateRevenue || 0).toFixed(2)}`,
+      change: `${overview.monthToDateSales || 0} transactions this month`, 
       changeType: 'positive' as const, 
       icon: ShoppingCartIcon 
     },
     { 
-      name: 'Total Products', 
-      value: overview ? (overview.totalProducts || 0).toString() : "0",
+      name: 'Active Orders', 
+      value: overview ? (overview.activeOrders || 0).toString() : "0",
       change: 'In inventory', 
       changeType: 'positive' as const, 
       icon: UserGroupIcon 
     },
     { 
-      name: 'Revenue', 
-      value: `LKR${(overview.totalRevenue || 0).toFixed(2)}`, 
-      change: 'All time', 
+      name: 'Total Top Products', 
+      value: overview ? (overview.topSellingProducts?.length || 0).toString() : "0",
+      change: 'In catalog', 
       changeType: 'positive' as const, 
-      icon: ChartBarIcon 
+      icon: UserGroupIcon 
     },
   ] : [
     { name: 'Total Sales', value: 'LKR0.00', change: 'Loading...', changeType: 'positive' as const, icon: CurrencyDollarIcon },
@@ -171,8 +147,8 @@ export default function Dashboard() {
                           </thead>
                           <tbody className="divide-y divide-gray-200">
                             {recentSales.map((sale) => (
-                              <tr key={sale._id}>
-                                <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary-900">#{sale._id}</td>
+                              <tr key={sale.id}>
+                                <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary-900">#{sale.id}</td>
                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary-900">
                                   {sale.customerName || 'Walk-in Customer'}
                                 </td>
@@ -214,13 +190,13 @@ export default function Dashboard() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-200">
-                            {overview.topSellingProducts.map((product: ProductSalesReport) => (
+                            {overview.topSellingProducts.map((product) => (
                               <tr key={product.productId}>
                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary-900">
-                                  {product.name}
+                                  {product.productName}
                                 </td>
                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary-900">
-                                  {product.totalQuantitySold} units
+                                  {product.quantitySold} units
                                 </td>
                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary-900">
                                   ${product.totalRevenue.toFixed(2)}
