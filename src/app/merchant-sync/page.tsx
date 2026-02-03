@@ -20,6 +20,8 @@ export default function MerchantSyncPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [accessToken, setAccessToken] = useState('');
+  const [merchantId, setMerchantId] = useState('');
+  const [dataSourceId, setDataSourceId] = useState('');
   const [syncResults, setSyncResults] = useState<SyncResult[]>([]);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
 
@@ -47,8 +49,8 @@ export default function MerchantSyncPage() {
   };
 
   const syncAllProducts = async () => {
-    if (!accessToken.trim()) {
-      alert('Please enter your Google Access Token first!');
+    if (!accessToken.trim() || !merchantId.trim() || !dataSourceId.trim()) {
+      alert('Please enter Access Token, Merchant ID, and Data Source ID!');
       return;
     }
 
@@ -71,9 +73,16 @@ export default function MerchantSyncPage() {
       ));
 
       try {
+        // Add merchant ID and data source to product
+        const productWithDataSource = {
+          ...product,
+          dataSource: `accounts/${merchantId}/dataSources/${dataSourceId}`
+        };
+
         const result = await merchantApi.syncProduct({
-          product,
-          accessToken: accessToken.trim()
+          product: productWithDataSource,
+          accessToken: accessToken.trim(),
+          merchantId: merchantId.trim()
         });
 
         if (result.success) {
@@ -110,8 +119,8 @@ export default function MerchantSyncPage() {
   };
 
   const syncSingleProduct = async (product: Product) => {
-    if (!accessToken.trim()) {
-      alert('Please enter your Google Access Token first!');
+    if (!accessToken.trim() || !merchantId.trim() || !dataSourceId.trim()) {
+      alert('Please enter Access Token, Merchant ID, and Data Source ID!');
       return;
     }
 
@@ -124,9 +133,16 @@ export default function MerchantSyncPage() {
     ));
 
     try {
+      // Add merchant ID and data source to product
+      const productWithDataSource = {
+        ...product,
+        dataSource: `accounts/${merchantId}/dataSources/${dataSourceId}`
+      };
+
       const result = await merchantApi.syncProduct({
-        product,
-        accessToken: accessToken.trim()
+        product: productWithDataSource,
+        accessToken: accessToken.trim(),
+        merchantId: merchantId.trim()
       });
 
       if (result.success) {
@@ -180,10 +196,42 @@ export default function MerchantSyncPage() {
           </p>
         </div>
 
-        {/* Access Token Input */}
+        {/* Configuration Inputs */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Step 1: Enter Access Token</h2>
+          <h2 className="text-xl font-semibold mb-4">Step 1: Enter Configuration</h2>
           <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Merchant ID
+              </label>
+              <input
+                type="text"
+                value={merchantId}
+                onChange={(e) => setMerchantId(e.target.value)}
+                placeholder="1234567890"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Find in Merchant Center → Settings → Account Info
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Data Source ID
+              </label>
+              <input
+                type="text"
+                value={dataSourceId}
+                onChange={(e) => setDataSourceId(e.target.value)}
+                placeholder="9876543210"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Create data source first if you don't have one
+              </p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Google Access Token
@@ -205,13 +253,13 @@ export default function MerchantSyncPage() {
                 >
                   OAuth Playground
                 </a>
-                {' '}→ Content API for Shopping
+                {' '}→ Merchant API
               </p>
             </div>
 
             <button
               onClick={syncAllProducts}
-              disabled={syncing || !accessToken.trim()}
+              disabled={syncing || !accessToken.trim() || !merchantId.trim() || !dataSourceId.trim()}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
             >
               {syncing ? `Syncing... (${progress.current}/${progress.total})` : `Sync All ${products.length} Products`}
@@ -341,7 +389,7 @@ export default function MerchantSyncPage() {
                         {(status === 'pending' || status === 'error') && (
                           <button
                             onClick={() => syncSingleProduct(product)}
-                            disabled={syncing || !accessToken.trim()}
+                            disabled={syncing || !accessToken.trim() || !merchantId.trim() || !dataSourceId.trim()}
                             className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {status === 'error' ? 'Retry' : 'Sync'}

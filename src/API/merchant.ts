@@ -1,30 +1,42 @@
 import { API_BASE_URL } from './config';
 import { Product } from './types';
 
+// Google Merchant API v1 - replaces deprecated Content API
+// Reference: https://developers.google.com/merchant/api/guides/data-sources/api-sources
+
+export interface DataSource {
+  name: string;
+  dataSourceId: string;
+  displayName: string;
+  input: 'API' | 'FILE' | 'UI';
+}
+
 export interface MerchantProduct {
   offerId: string;
   contentLanguage: string;
   feedLabel: string;
-  name: string;
-  productAttributes: {
-    brand: string;
+  dataSource: string; // Reference to data source
+  attributes: {
+    title: string;
     description: string;
-    imageLink: string;
     link: string;
+    imageLink: string;
     price: {
       value: string;
       currency: string;
     };
     availability: 'in stock' | 'out of stock' | 'preorder';
-    condition: 'new' | 'refurbished' | 'used';
-    gender?: 'MALE' | 'FEMALE' | 'UNISEX';
+    brand?: string;
+    condition?: 'new' | 'refurbished' | 'used';
+    gtin?: string;
+    mpn?: string;
   };
 }
 
 export interface SyncProductRequest {
   product: Product;
   accessToken: string;
-  merchantId?: string;
+  merchantId: string;
 }
 
 export interface SyncResult {
@@ -36,30 +48,75 @@ export interface SyncResult {
 
 export const merchantApi = {
   /**
-   * Sync a single product to Google Merchant Center
+   * Create a Data Source (required before uploading products)
+   * Reference: https://developers.google.com/merchant/api/guides/data-sources/api-sources
+   */
+  async createDataSource(
+    merchantId: string,
+    accessToken: string,
+    displayName: string = 'POS API Data Source'
+  ): Promise<SyncResult> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/merchant/create-datasource`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          merchantId,
+          accessToken,
+          displayName,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          success: false,
+          error: errorData.error || 'Failed to create data source',
+          details: errorData,
+        };
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  },
+
+  /**
+   * Sync a single product to Google Merchant Center using new Merchant API v1
+   * Reference: https://developers.google.com/merchant/api/guides/products/add-manage
    */
   async syncProduct(request: SyncProductRequest): Promise<SyncResult> {
     try {
-      const { product, accessToken } = request;
+      const { product, accessToken, merchantId } = request;
       
-      // Transform product to Google Merchant format
+      // Transform product to Google Merchant API v1 format
       const merchantProduct: MerchantProduct = {
         offerId: (product._id || product.id || ''),
         contentLanguage: 'en',
         feedLabel: 'LK', // Sri Lanka
-        name: product.name,
-        productAttributes: {
-          brand: product.brand,
+        dataSource: 'accounts/{MERCHANT_ID}/dataSources/{DATASOURCE_ID}',
+        attributes: {
+          title: product.name,
           description: product.description,
-          imageLink: product.images?.[0] || '',
           link: `https://cellcare.lk/products/${product._id || product.id || 'product'}`,
+          imageLink: product.images?.[0] || '',
           price: {
             value: product.sellingPrice.toString(),
             currency: 'LKR',
           },
           availability: 'in stock' as const,
+          brand: product.brand,
           condition: 'new' as const,
-          gender: 'UNISEX' as const,
         },
       };
 
@@ -71,6 +128,7 @@ export const merchantApi = {
         body: JSON.stringify({
           merchantProduct,
           accessToken,
+          merchantId,
         }),
       });
 

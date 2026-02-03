@@ -1,6 +1,8 @@
 # 🎯 Google Merchant Sync - POS System
 
-Automatically sync all your products from POS to Google Merchant Center!
+Automatically sync all your products from POS to Google Merchant Center using the **new Merchant API v1**!
+
+⚠️ **Important:** This uses the new [Merchant API v1](https://developers.google.com/merchant/api/guides/data-sources/api-sources). The old Content API is deprecated and will be shut down.
 
 ---
 
@@ -30,13 +32,18 @@ http://localhost:3003/merchant-sync
 
 ### **Step 2: Get Google Access Token**
 
+⚠️ **Updated for Merchant API v1**
+
 1. Go to: https://developers.google.com/oauthplayground/
-2. Find: **"Content API for Shopping"**
+2. Find: **"Merchant API"** (not "Content API")
 3. Check: `https://www.googleapis.com/auth/content`
+   - This scope works for both old and new APIs during migration
 4. Click: **"Authorize APIs"**
 5. Sign in with your Google account
 6. Click: **"Exchange authorization code for tokens"**
 7. Copy the **"Access token"** (starts with `ya29.`)
+
+**Note:** While the scope name remains `content`, it now grants access to the new Merchant API v1 endpoints.
 
 ### **Step 3: Enter Token**
 
@@ -148,31 +155,87 @@ Paste the access token in the input field on the sync page.
 
 ---
 
-## 📋 Product Requirements
+## 📋 First-Time Setup (Required for New Merchant API)
+
+### **Before You Can Sync Products:**
+
+1. **Create a Merchant Center Account**
+   - Go to: https://merchants.google.com/
+   - Complete account setup
+   - Note your Merchant ID
+
+2. **Create a Data Source (One-Time)**
+   - Your backend needs `/merchant/create-datasource` endpoint
+   - Call it once with your Merchant ID and access token
+   - Save the returned `dataSourceId` for product uploads
+
+3. **Then Sync Products**
+   - Use the `dataSourceId` in product uploads
+   - Products must reference the data source
+
+### **Product Requirements:**
 
 Each product needs:
-- ✅ Name
+- ✅ Title (name)
 - ✅ Brand
 - ✅ Description
 - ✅ Price (sellingPrice)
-- ✅ At least one image (public URL)
+- ✅ At least one image (public https:// URL)
+- ✅ Product link (URL to product page)
+- ✅ Data Source reference
 
 Products missing these will show errors.
 
 ---
 
-## 🔧 Backend Requirement
+## 🔧 Backend Requirements (Updated for Merchant API v1)
 
-You need to add this endpoint to your backend:
+⚠️ **Important:** The Content API is deprecated. Use the new [Merchant API v1](https://developers.google.com/merchant/api/guides/data-sources/api-sources).
+
+### **Step 1: Create a Data Source (One-Time Setup)**
+
+Before uploading products, you need to create a **Data Source**:
+
+**`POST /merchant/create-datasource`**
+
+```typescript
+app.post('/merchant/create-datasource', async (req, res) => {
+  const { merchantId, accessToken, displayName } = req.body;
+  
+  // Create Data Source using new Merchant API v1
+  const url = `https://merchantapi.googleapis.com/datasources/v1/accounts/${merchantId}/dataSources`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      displayName: displayName || 'POS API Data Source',
+      primaryProductDataSource: {
+        countries: ['LK'] // Sri Lanka
+      }
+    })
+  });
+  
+  const result = await response.json();
+  res.json(result);
+});
+```
+
+### **Step 2: Sync Products**
+
+After creating the data source, sync products:
 
 **`POST /merchant/sync-product`**
 
 ```typescript
 app.post('/merchant/sync-product', async (req, res) => {
-  const { merchantProduct, accessToken } = req.body;
+  const { merchantProduct, accessToken, merchantId } = req.body;
   
-  // Call Google Merchant API
-  const url = 'https://merchantapi.googleapis.com/accounts/v1beta/...'
+  // Insert product using new Merchant API v1
+  const url = `https://merchantapi.googleapis.com/products/v1/accounts/${merchantId}/products:insert`;
   
   const response = await fetch(url, {
     method: 'POST',
@@ -184,9 +247,29 @@ app.post('/merchant/sync-product', async (req, res) => {
   });
   
   const result = await response.json();
+  
+  if (!response.ok) {
+    return res.status(response.status).json({
+      error: result.error || 'Failed to sync',
+      details: result
+    });
+  }
+  
   res.json(result);
 });
 ```
+
+### **Key Differences from Old Content API:**
+
+| Old Content API (Deprecated) | New Merchant API v1 |
+|------------------------------|---------------------|
+| `content.googleapis.com` | `merchantapi.googleapis.com` |
+| Direct product upload | Requires Data Source first |
+| `/content/v2.1/products` | `/products/v1/accounts/{id}/products:insert` |
+| `productAttributes` field | `attributes` field |
+| No data source required | Must reference data source |
+
+**Reference:** [Google Merchant API Documentation](https://developers.google.com/merchant/api/guides/data-sources/api-sources)
 
 ---
 
