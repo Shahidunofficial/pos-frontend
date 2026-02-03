@@ -44,7 +44,7 @@ export const merchantApi = {
       
       // Transform product to Google Merchant format
       const merchantProduct: MerchantProduct = {
-        offerId: product._id || product.id,
+        offerId: (product._id || product.id || ''),
         contentLanguage: 'en',
         feedLabel: 'LK', // Sri Lanka
         name: product.name,
@@ -52,7 +52,7 @@ export const merchantApi = {
           brand: product.brand,
           description: product.description,
           imageLink: product.images?.[0] || '',
-          link: `https://cellcare.lk/products/${product.slug || product._id}`,
+          link: `https://cellcare.lk/products/${product._id || product.id || 'product'}`,
           price: {
             value: product.sellingPrice.toString(),
             currency: 'LKR',
