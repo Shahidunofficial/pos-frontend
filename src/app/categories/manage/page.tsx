@@ -140,15 +140,15 @@ export default function ManageCategories() {
         >
           <div 
             className="flex-1 flex items-center"
-            onClick={() => hasChildren && toggleCategory(category.id)}
-          >
-            <div className="w-4 h-4 flex items-center justify-center mr-2">
-              {hasChildren && (
-                <span className="text-gray-600">{isExpanded ? '▼' : '▶'}</span>
-              )}
-            </div>
-            <span className="flex-1 font-medium">{category.name}</span>
-            <span className="text-sm text-gray-500 mr-4">Level {category.level}</span>
+          onClick={() => hasChildren && toggleCategory(category.id)}
+        >
+          <div className="w-4 h-4 flex items-center justify-center mr-2">
+            {hasChildren && (
+              <span className="text-gray-600">{isExpanded ? '▼' : '▶'}</span>
+            )}
+          </div>
+          <span className="flex-1 font-medium">{category.name}</span>
+          <span className="text-sm text-gray-500 mr-4">Level {category.level}</span>
           </div>
           <button
             onClick={(e) => openDeleteModal(category.id, category.name, e)}

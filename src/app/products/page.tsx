@@ -368,13 +368,13 @@ export default function ProductsPage() {
                       </td>
                       <td className="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-3">
-                          <Link
-                            href={`/products/${product.id || product._id}/edit`}
+                        <Link
+                          href={`/products/${product.id || product._id}/edit`}
                             className="text-primary-600 hover:text-primary-900 transition-colors duration-200 flex items-center gap-1"
-                          >
+                        >
                             <PencilIcon className="h-4 w-4" />
                             Edit
-                          </Link>
+                        </Link>
                           <button
                             onClick={() => openDeleteModal(product.id || product._id || '', product.name)}
                             className="text-red-600 hover:text-red-900 transition-colors duration-200 flex items-center gap-1"
