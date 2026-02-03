@@ -10,6 +10,7 @@ import {
   CubeIcon,
   ChartBarIcon,
   ShoppingBagIcon,
+  CloudIcon,
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -22,6 +23,7 @@ const navigation = [
   { name: 'New Sale', href: '/sales/new', icon: ShoppingCartIcon },
   { name: 'Sales Reports', href: '/SalesReport', icon: ChartBarIcon },
   { name: 'Invoices', href: '/invoices', icon: DocumentTextIcon },
+  { name: 'Google Merchant', href: '/merchant-sync', icon: CloudIcon },
 ]
 
 interface SidebarProps {
