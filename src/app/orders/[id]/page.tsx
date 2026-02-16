@@ -160,7 +160,10 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 <h3 className="font-semibold text-gray-900 mb-4">Order Items</h3>
                 <div className="space-y-3">
                   {order.items.map((item, idx) => {
-                    const product = typeof item.productId === 'object' ? item.productId as OrderProduct : null;
+                    const product = typeof item.productId === 'object' && item.productId !== null
+                      ? (item.productId as OrderProduct)
+                      : null;
+                    const productName = product?.name || (typeof item.productId === 'string' ? `Product #${item.productId.slice(-8)}` : 'Unknown Product');
                     return (
                       <div key={idx} className="flex items-center justify-between border-b pb-3 gap-4">
                         <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -179,7 +182,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                           )}
                           <div className="min-w-0">
                             <p className="font-medium text-gray-900 truncate">
-                              {product?.name || `Product (${typeof item.productId === 'string' ? item.productId.slice(-8) : 'N/A'})`}
+                              {productName}
                             </p>
                             {product?.brand && (
                               <p className="text-sm text-gray-500">{product.brand}</p>
