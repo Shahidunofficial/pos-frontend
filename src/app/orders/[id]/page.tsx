@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/MainLayout';
-import { ordersApi, type Order, type OrderStatus } from '@/API/orders';
+import { ordersApi, type Order, type OrderStatus, type OrderProduct } from '@/API/orders';
 import toast, { Toaster } from 'react-hot-toast';
 
 interface OrderDetailPageProps {
@@ -159,15 +159,40 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
               <div className="mb-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Order Items</h3>
                 <div className="space-y-3">
-                  {order.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between border-b pb-3">
-                      <div>
-                        <p className="font-medium text-gray-900">Item {idx + 1}</p>
-                        <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                  {order.items.map((item, idx) => {
+                    const product = typeof item.productId === 'object' ? item.productId as OrderProduct : null;
+                    return (
+                      <div key={idx} className="flex items-center justify-between border-b pb-3 gap-4">
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          {product?.images?.[0] ? (
+                            <img
+                              src={product.images[0]}
+                              alt={product.name}
+                              className="w-16 h-16 object-cover rounded-lg border border-gray-200 flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                              </svg>
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 truncate">
+                              {product?.name || `Product (${typeof item.productId === 'string' ? item.productId.slice(-8) : 'N/A'})`}
+                            </p>
+                            {product?.brand && (
+                              <p className="text-sm text-gray-500">{product.brand}</p>
+                            )}
+                            <p className="text-sm text-gray-600">
+                              Qty: {item.quantity} × LKR {item.price.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="font-semibold text-gray-900 flex-shrink-0">LKR {(item.price * item.quantity).toFixed(2)}</p>
                       </div>
-                      <p className="font-semibold text-gray-900">LKR {(item.price * item.quantity).toFixed(2)}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="mt-4 pt-4 border-t space-y-2">
                   <div className="flex justify-between text-gray-600">

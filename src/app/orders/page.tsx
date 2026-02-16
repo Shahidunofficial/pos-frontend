@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/MainLayout';
-import { ordersApi, type Order } from '@/API/orders';
+import { ordersApi, type Order, type OrderProduct } from '@/API/orders';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function OrdersPage() {
@@ -78,11 +78,10 @@ export default function OrdersPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">Order ID</th>
+                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Products</th>
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Customer</th>
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Contact</th>
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Date</th>
-                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Subtotal</th>
-                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Shipping</th>
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Total</th>
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Actions</th>
@@ -90,11 +89,31 @@ export default function OrdersPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {filteredOrders.map((order) => {
-                      const itemsTotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                      const productNames = order.items.map((item) => {
+                        const product = typeof item.productId === 'object' ? item.productId as OrderProduct : null;
+                        return product?.name || 'Unknown Product';
+                      });
                       return (
-                        <tr key={order._id}>
+                        <tr key={order._id} className="hover:bg-gray-50">
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900">
                             #{order._id.slice(-8)}
+                          </td>
+                          <td className="px-3 py-4 text-sm text-gray-700 max-w-xs">
+                            <div className="flex items-center gap-2">
+                              {order.items.length > 0 && typeof order.items[0].productId === 'object' && (order.items[0].productId as OrderProduct)?.images?.[0] && (
+                                <img
+                                  src={(order.items[0].productId as OrderProduct).images[0]}
+                                  alt=""
+                                  className="w-10 h-10 object-cover rounded border border-gray-200 flex-shrink-0"
+                                />
+                              )}
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">{productNames[0]}</p>
+                                {productNames.length > 1 && (
+                                  <p className="text-xs text-gray-500">+{productNames.length - 1} more item{productNames.length > 2 ? 's' : ''}</p>
+                                )}
+                              </div>
+                            </div>
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                             {order.userId?.name || 'N/A'}
@@ -104,12 +123,6 @@ export default function OrdersPage() {
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                             {new Date(order.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            LKR {itemsTotal.toFixed(2)}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            LKR {(order.shippingFee || 0).toFixed(2)}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm font-semibold text-gray-900">
                             LKR {order.total.toFixed(2)}

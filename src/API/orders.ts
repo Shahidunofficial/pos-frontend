@@ -7,6 +7,16 @@ const getAuthToken = () => {
   return null;
 };
 
+export interface OrderProduct {
+  _id: string;
+  name: string;
+  brand: string;
+  images: string[];
+  sellingPrice: number;
+  basePrice: number;
+  slug?: string;
+}
+
 export interface Order {
   _id: string;
   userId: {
@@ -15,7 +25,7 @@ export interface Order {
     email?: string;
   };
   items: Array<{
-    productId: string;
+    productId: string | OrderProduct;
     quantity: number;
     price: number;
   }>;
