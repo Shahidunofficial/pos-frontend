@@ -160,6 +160,7 @@ export const merchantApi = {
   async syncMultipleProducts(
     products: Product[],
     accessToken: string,
+    merchantId: string,
     onProgress?: (current: number, total: number) => void
   ): Promise<SyncResult[]> {
     const results: SyncResult[] = [];
@@ -173,7 +174,7 @@ export const merchantApi = {
       }
 
       // Sync product
-      const result = await this.syncProduct({ product, accessToken });
+      const result = await this.syncProduct({ product, accessToken, merchantId });
       results.push(result);
 
       // Wait 2 seconds between requests to avoid rate limiting
