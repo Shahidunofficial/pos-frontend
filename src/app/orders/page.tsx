@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/MainLayout';
 import { ordersApi, type Order, type OrderProduct } from '@/API/orders';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -44,7 +44,6 @@ export default function OrdersPage() {
 
   return (
     <>
-      <Toaster position="top-right" />
       <MainLayout>
         <div className="py-10">
           <div className="px-4 sm:px-6 lg:px-8">

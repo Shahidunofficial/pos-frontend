@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import toast from 'react-hot-toast'
 import { productsApi, Product, UpdateProductRequest } from '../../../../API'
+import MainLayout from '../../../../components/MainLayout'
 
 const editProductSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -320,25 +321,30 @@ export default function EditProductPage() {
 
   if (isLoading) {
     return (
-      <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-lg text-gray-600">Loading product...</div>
+      <MainLayout>
+        <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg text-gray-600">Loading product...</div>
+          </div>
         </div>
-      </div>
+      </MainLayout>
     )
   }
 
   if (!product) {
     return (
-      <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-lg text-gray-600">Product not found</div>
+      <MainLayout>
+        <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg text-gray-600">Product not found</div>
+          </div>
         </div>
-      </div>
+      </MainLayout>
     )
   }
 
   return (
+    <MainLayout>
     <form onSubmit={handleSubmit(onSubmit)} className="px-4 sm:px-6 lg:px-8">
       <div className="space-y-12">
         <div className="border-b border-gray-900/10 pb-12">
@@ -628,5 +634,6 @@ export default function EditProductPage() {
         </div>
       </div>
     </form>
+    </MainLayout>
   )
 } 

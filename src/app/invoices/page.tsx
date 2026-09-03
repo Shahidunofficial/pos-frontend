@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import MainLayout from '../../components/MainLayout'
 
 interface Invoice {
   id: string
@@ -29,6 +30,7 @@ export default function InvoicesPage() {
   }
 
   return (
+    <MainLayout>
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
@@ -119,5 +121,6 @@ export default function InvoicesPage() {
         </div>
       </div>
     </div>
+    </MainLayout>
   )
 } 

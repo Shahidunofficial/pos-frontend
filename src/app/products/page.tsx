@@ -6,6 +6,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { apiService, Product, productsApi, categoriesApi, Category } from '../../API'
 import React from 'react'
+import MainLayout from '../../components/MainLayout'
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -179,15 +180,18 @@ export default function ProductsPage() {
 
   if (loading) {
     return (
-      <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-lg text-gray-600">Loading products...</div>
+      <MainLayout>
+        <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg text-gray-600">Loading products...</div>
+          </div>
         </div>
-      </div>
+      </MainLayout>
     )
   }
 
   return (
+    <MainLayout>
     <div className="min-h-screen bg-gray-50/30">
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Section */}
@@ -506,5 +510,6 @@ export default function ProductsPage() {
         )}
       </div>
     </div>
+    </MainLayout>
   )
 } 

@@ -7,6 +7,7 @@ import * as z from 'zod'
 import toast from 'react-hot-toast'
 import { apiService, Category } from '../../../API'
 import { FiChevronRight, FiChevronDown, FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi'
+import MainLayout from '../../../components/MainLayout'
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -168,6 +169,7 @@ export default function ManageCategories() {
   }
 
   return (
+    <MainLayout>
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Category Form */}
@@ -294,5 +296,6 @@ export default function ManageCategories() {
         </div>
       )}
     </div>
+    </MainLayout>
   )
 } 

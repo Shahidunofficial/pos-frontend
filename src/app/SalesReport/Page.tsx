@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { CalendarIcon, ChartBarIcon, CurrencyDollarIcon, ShoppingBagIcon, PrinterIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import { SalesReportApi, SalesOverview, DailySalesReport, MonthlySalesReport, InventoryAnalysis, Sale } from '../../API/SalesReport'
+import MainLayout from '../../components/MainLayout'
 
 export default function SalesReportPage() {
   const [loading, setLoading] = useState(true)
@@ -147,15 +148,18 @@ export default function SalesReportPage() {
 
   if (loading) {
     return (
-      <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-lg text-gray-600">Loading sales reports...</div>
+      <MainLayout>
+        <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg text-gray-600">Loading sales reports...</div>
+          </div>
         </div>
-      </div>
+      </MainLayout>
     )
   }
 
   return (
+    <MainLayout>
     <div className="px-4 sm:px-6 lg:px-8 animate-fade-in">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
@@ -628,5 +632,6 @@ export default function SalesReportPage() {
         </div>
       )}
     </div>
+    </MainLayout>
   )
 }

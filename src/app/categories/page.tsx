@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import toast from 'react-hot-toast'
 import { apiService, Category } from '../../API'
+import MainLayout from '../../components/MainLayout'
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -100,6 +101,7 @@ export default function CategoriesPage() {
   }
 
   return (
+    <MainLayout>
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
@@ -197,5 +199,6 @@ export default function CategoriesPage() {
         </div>
       </div>
     </div>
+    </MainLayout>
   )
 } 

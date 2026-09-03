@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { CurrencyDollarIcon, ShoppingCartIcon, UserGroupIcon, ChartBarIcon } from '@heroicons/react/24/outline'
-import toast, { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import MainLayout from '@/components/MainLayout'
 import { SalesReportApi, SalesOverview as SalesOverviewType, Sale as SaleType } from '@/API/SalesReport'
 
@@ -94,7 +94,6 @@ export default function Dashboard() {
 
   return (
     <>
-      <Toaster position="top-right" />
       <MainLayout>
         <div className="py-10 animate-fade-in">
           <div className="px-4 sm:px-6 lg:px-8">

@@ -8,6 +8,7 @@ import * as z from 'zod'
 import toast from 'react-hot-toast'
 import { apiService } from '../../../API'
 import { useAuth } from '@/hooks/useAuth'
+import MainLayout from '@/components/MainLayout'
 
 const variantSchema = z.object({
   id: z.string(),
@@ -416,6 +417,7 @@ export default function NewProductPage() {
   }
 
   return (
+    <MainLayout>
     <form onSubmit={handleSubmit(onSubmit)} className="px-4 sm:px-6 lg:px-8">
       <div className="space-y-12">
         <div className="border-b border-gray-900/10 pb-12">
@@ -866,5 +868,6 @@ export default function NewProductPage() {
         </button>
       </div>
     </form>
+    </MainLayout>
   )
 } 

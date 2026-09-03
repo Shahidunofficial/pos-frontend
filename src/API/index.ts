@@ -2,9 +2,14 @@
 export { productsApi } from './products';
 export { salesApi } from './sales';
 export { categoriesApi } from './categories';
+export { repairBillsApi } from './repairBills';
+export { appointmentsApi } from './appointments';
 
 // Export types
 export * from './types';
+export * from './repairTypes';
+export * from './motherboardRisk';
+export * from './warrantyOptions';
 
 // Export config
 export { API_BASE_URL, makeRequest } from './config';
